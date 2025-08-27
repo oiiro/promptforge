@@ -11,13 +11,37 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 from contextlib import contextmanager
 
-from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
-from opentelemetry.trace import Status, StatusCode
-from opentelemetry.instrumentation.requests import RequestsInstrumentor
+# OpenTelemetry imports with graceful fallback
+try:
+    from opentelemetry import trace
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+    from opentelemetry.trace import Status, StatusCode
+    from opentelemetry.instrumentation.requests import RequestsInstrumentor
+    OPENTELEMETRY_AVAILABLE = True
+except ImportError as e:
+    logger = logging.getLogger(__name__)
+    logger.warning(f"OpenTelemetry not available: {e}. Tracing features disabled.")
+    OPENTELEMETRY_AVAILABLE = False
+    
+    # Mock classes for graceful fallback
+    class MockTracer:
+        def start_span(self, *args, **kwargs):
+            return MockSpan()
+    
+    class MockSpan:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+        def set_attribute(self, *args, **kwargs):
+            pass
+        def set_status(self, *args, **kwargs):
+            pass
+        def record_exception(self, *args, **kwargs):
+            pass
 
 logger = logging.getLogger(__name__)
 
@@ -29,39 +53,54 @@ class TracingManager:
         self.service_name = service_name
         self.tracer = self._initialize_tracer()
         
-        # Instrument HTTP requests automatically
-        RequestsInstrumentor().instrument()
+        # Instrument HTTP requests automatically if OpenTelemetry is available
+        if OPENTELEMETRY_AVAILABLE:
+            try:
+                RequestsInstrumentor().instrument()
+            except Exception as e:
+                logger.warning(f"Failed to instrument requests: {e}")
+        else:
+            logger.info("OpenTelemetry not available. Tracing disabled.")
         
     def _initialize_tracer(self):
         """Set up OpenTelemetry tracer"""
-        # Create resource with service information
-        resource = Resource.create({
-            "service.name": self.service_name,
-            "service.version": os.getenv("VERSION", "1.0.0"),
-            "deployment.environment": os.getenv("ENVIRONMENT", "development")
-        })
-        
-        # Create tracer provider
-        provider = TracerProvider(resource=resource)
-        
-        # Add exporters
-        if os.getenv("ENABLE_TRACING") == "true":
-            # OTLP exporter for production
-            otlp_exporter = OTLPSpanExporter(
-                endpoint=os.getenv("TRACING_ENDPOINT", "localhost:4317"),
-                insecure=True
-            )
-            provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
-        
-        # Always add console exporter in development
-        if os.getenv("ENVIRONMENT") == "development":
-            console_exporter = ConsoleSpanExporter()
-            provider.add_span_processor(BatchSpanProcessor(console_exporter))
-        
-        # Set global tracer provider
-        trace.set_tracer_provider(provider)
-        
-        return trace.get_tracer(__name__)
+        if not OPENTELEMETRY_AVAILABLE:
+            logger.info("OpenTelemetry not available. Using mock tracer.")
+            return MockTracer()
+            
+        try:
+            # Create resource with service information
+            resource = Resource.create({
+                "service.name": self.service_name,
+                "service.version": os.getenv("VERSION", "1.0.0"),
+                "deployment.environment": os.getenv("ENVIRONMENT", "development")
+            })
+            
+            # Create tracer provider
+            provider = TracerProvider(resource=resource)
+            
+            # Add exporters
+            if os.getenv("ENABLE_TRACING") == "true":
+                # OTLP exporter for production
+                otlp_exporter = OTLPSpanExporter(
+                    endpoint=os.getenv("TRACING_ENDPOINT", "localhost:4317"),
+                    insecure=True
+                )
+                provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+            
+            # Always add console exporter in development
+            if os.getenv("ENVIRONMENT") == "development":
+                console_exporter = ConsoleSpanExporter()
+                provider.add_span_processor(BatchSpanProcessor(console_exporter))
+            
+            # Set global tracer provider
+            trace.set_tracer_provider(provider)
+            
+            return trace.get_tracer(__name__)
+            
+        except Exception as e:
+            logger.warning(f"Failed to initialize OpenTelemetry tracer: {e}. Using mock tracer.")
+            return MockTracer()
     
     def start_span(self, name: str, request_id: str = None) -> Any:
         """Start a new trace span"""

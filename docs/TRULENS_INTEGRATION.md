@@ -415,6 +415,26 @@ alembic>=1.12.0
 export TRULENS_DATABASE_URL=sqlite:///trulens_promptforge.db
 ```
 
+**8. OpenTelemetry Import Errors**
+```bash
+# Issue: ModuleNotFoundError: No module named 'opentelemetry.instrumentation'
+# Root Cause: Missing OpenTelemetry instrumentation packages
+# Solution: Install the missing instrumentation packages
+pip install opentelemetry-instrumentation-requests opentelemetry-instrumentation-fastapi opentelemetry-instrumentation-httpx
+
+# Or install all OpenTelemetry packages from requirements:
+pip install -r requirements.txt
+```
+
+**9. Tracing Not Working**
+```bash
+# Issue: OpenTelemetry tracing not available or failing
+# Root Cause: Missing OpenTelemetry dependencies or initialization failures
+# Solution: The tracing module includes graceful fallback with mock tracer
+# Check logs for: "OpenTelemetry not available. Using mock tracer."
+# Tracing features will be disabled but application will continue to work
+```
+
 ### Verification Commands
 ```bash
 # Run comprehensive verification
@@ -424,6 +444,13 @@ python scripts/verify_trulens_setup.py
 python -c "from evaluation.trulens_config import TruLensConfig; print('✅ TruLens Config OK')"
 python -c "from evaluation.offline_evaluation import OfflineEvaluator; print('✅ Offline Evaluation OK')"
 python -c "from evaluation.production_monitoring import ProductionMonitor; print('✅ Production Monitoring OK')"
+
+# Test OpenTelemetry integration
+python -c "from observability.tracing import TracingManager; tm = TracingManager(); print('✅ OpenTelemetry Tracing OK')"
+python -c "from opentelemetry.instrumentation.requests import RequestsInstrumentor; print('✅ OpenTelemetry Instrumentation OK')"
+
+# Test server startup (should not show OpenTelemetry import errors)
+timeout 5 python orchestration/app.py
 ```
 
 ## Performance Considerations
