@@ -49,8 +49,10 @@ class PresidioCapitalFinderDemo:
         if results:
             for result in results:
                 detected_text = text[result.start:result.end]
+                # RecognizerResult uses 'score' attribute, not 'confidence'
+                confidence_score = getattr(result, 'score', getattr(result, 'confidence', 0.0))
                 print(f"   - {result.entity_type}: '{detected_text}' "
-                      f"(confidence: {result.confidence:.2f})")
+                      f"(confidence: {confidence_score:.2f})")
         else:
             print("   - No PII detected")
         
@@ -70,6 +72,7 @@ class PresidioCapitalFinderDemo:
             "LOCATION": OperatorConfig("replace", {"new_value": "<LOCATION>"}),
             "DATE_TIME": OperatorConfig("replace", {"new_value": "<DATE>"}),
             "US_SSN": OperatorConfig("replace", {"new_value": "<SSN>"}),
+            "URL": OperatorConfig("replace", {"new_value": "<URL>"}),
             "DEFAULT": OperatorConfig("replace", {"new_value": "<REDACTED>"})
         }
         
@@ -79,15 +82,17 @@ class PresidioCapitalFinderDemo:
             operators=operators
         )
         
-        # Store the mapping for deanonymization
-        self.anonymization_map = {
-            item.operator: item.text for item in anonymized_result.items
-        }
+        # Store the mapping for deanonymization - create a proper mapping
+        anonymization_map = {}
+        for item in anonymized_result.items:
+            placeholder = item.operator
+            original_value = item.text
+            anonymization_map[placeholder] = original_value
         
         print(f"🔒 Anonymized Text: '{anonymized_result.text}'")
-        print(f"🗝️  Anonymization Map: {self.anonymization_map}")
+        print(f"🗝️  Anonymization Map: {anonymization_map}")
         
-        return anonymized_result.text, self.anonymization_map
+        return anonymized_result.text, anonymization_map
     
     def deanonymize_text(self, anonymized_text, anonymization_map):
         """Restore original PII in text."""
@@ -109,6 +114,41 @@ class PresidioCapitalFinderDemo:
         
         print(f"🔓 Deanonymized Text: '{deanonymized_text}'")
         return deanonymized_text
+    
+    def extract_country_from_query(self, original_query, pii_results):
+        """Extract country name from query, considering PII detection."""
+        # Known countries and their variations
+        countries = {
+            "france": "France", "french": "France",
+            "japan": "Japan", "japanese": "Japan", 
+            "germany": "Germany", "german": "Germany",
+            "italy": "Italy", "italian": "Italy",
+            "spain": "Spain", "spanish": "Spain",
+            "uk": "UK", "united kingdom": "United Kingdom", "britain": "UK", "england": "UK",
+            "canada": "Canada", "canadian": "Canada",
+            "australia": "Australia", "australian": "Australia",
+            "usa": "USA", "united states": "USA", "america": "USA",
+            "china": "China", "chinese": "China",
+            "india": "India", "indian": "India",
+            "brazil": "Brazil", "brazilian": "Brazil",
+            "russia": "Russia", "russian": "Russia"
+        }
+        
+        query_lower = original_query.lower()
+        
+        # Check for location entities that might be countries
+        for result in pii_results:
+            if result.entity_type == "LOCATION":
+                detected_location = original_query[result.start:result.end].lower()
+                if detected_location in countries:
+                    return countries[detected_location]
+        
+        # Check for countries in the full text
+        for country_key, country_name in countries.items():
+            if country_key in query_lower:
+                return country_name
+                
+        return None
     
     def mock_capital_query(self, country):
         """Mock capital finder service."""
@@ -150,14 +190,25 @@ class PresidioCapitalFinderDemo:
         # Step 2: Anonymize if PII found
         anonymized_query, anonymization_map = self.anonymize_text(user_query, pii_results)
         
-        # Step 3: Extract country from anonymized query
-        # In a real implementation, this would be more sophisticated
-        country = anonymized_query.lower()
-        for word in ["capital", "of", "what", "is", "the", "<person>", "<location>"]:
-            country = country.replace(word, "").strip()
+        # Step 3: Extract country from original or anonymized query
+        # First try to find known countries in the original query
+        country = self.extract_country_from_query(user_query, pii_results)
         
         if not country:
-            country = "Unknown"
+            # Fallback: try simple extraction from anonymized query
+            country_candidate = anonymized_query.lower()
+            for word in ["capital", "of", "what", "is", "the", "can", "you", "tell", "me", "about", "hi", "i'm", "and", "want", "to", "know"]:
+                country_candidate = country_candidate.replace(word, "").strip()
+            
+            # Remove punctuation and extra spaces
+            import re
+            country_candidate = re.sub(r'[^\w\s<>]', ' ', country_candidate)
+            country_candidate = re.sub(r'\s+', ' ', country_candidate).strip()
+            
+            if country_candidate and len(country_candidate) > 2:
+                country = country_candidate
+            else:
+                country = "Unknown"
         
         print(f"🎯 Extracted Country: '{country}'")
         
