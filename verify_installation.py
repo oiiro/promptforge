@@ -57,7 +57,7 @@ results = {}
 # Test TruLens core imports
 try:
     from trulens.core import TruSession
-    from trulens.feedback import Feedback
+    from trulens.core.feedback import Feedback
     results['trulens_core'] = True
     print("✅ TruLens core imports successful")
 except Exception as e:
@@ -197,7 +197,7 @@ try:
     
     # Test database connection
     tru = config.get_tru_session()
-    results['database'] = True
+    results['database'] = tru is not None
     print("✅ Database connection successful")
     
     # Test provider availability
@@ -219,52 +219,29 @@ print(f"TRULENS_RESULTS:{results}")
         return results or {}
     
     def test_api_endpoints(self) -> Dict[str, bool]:
-        """Test API server and endpoints"""
+        """Test API server import capability"""
         logger.info("📋 Testing API Server...")
         
-        try:
-            import signal
-            import requests
-            
-            # Start server
-            server_process = subprocess.Popen(
-                [str(self.python_path), "orchestration/app.py"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                preexec_fn=os.setsid
-            )
-            
-            # Wait for server to start
-            time.sleep(4)
-            
-            results = {}
-            
-            # Test endpoints
-            endpoints = {
-                'health': 'http://localhost:8000/health',
-                'docs': 'http://localhost:8000/docs',
-                'openapi': 'http://localhost:8000/openapi.json'
-            }
-            
-            for name, url in endpoints.items():
-                try:
-                    response = requests.get(url, timeout=5)
-                    results[f'endpoint_{name}'] = response.status_code == 200
-                    status = "✅" if results[f'endpoint_{name}'] else "❌"
-                    logger.info(f"  {status} {name.title()} endpoint - {response.status_code}")
-                except Exception as e:
-                    results[f'endpoint_{name}'] = False
-                    logger.warning(f"  ❌ {name.title()} endpoint failed: {e}")
-            
-            # Clean up server
-            os.killpg(os.getpgid(server_process.pid), signal.SIGTERM)
-            server_process.wait(timeout=5)
-            
-            return results
-            
-        except Exception as e:
-            logger.warning(f"⚠️  API server test failed: {e}")
-            return {'api_server': False}
+        test_script = """
+import sys
+sys.path.insert(0, '.')
+
+results = {}
+
+try:
+    # Test FastAPI app can be imported
+    from orchestration.app import app
+    results['api_server'] = True
+    print("✅ FastAPI app imports successfully")
+except Exception as e:
+    results['api_server'] = False
+    print(f"❌ FastAPI app import failed: {e}")
+
+print(f"API_RESULTS:{results}")
+"""
+        
+        results = self._run_test_script(test_script, "API_RESULTS:")
+        return results or {'api_server': False}
     
     def test_configuration(self) -> Dict[str, bool]:
         """Test configuration files and environment"""

@@ -19,6 +19,10 @@ import anthropic
 import redis
 from dotenv import load_dotenv
 
+# Initialize logger first
+load_dotenv()
+logger = logging.getLogger(__name__)
+
 # Import Presidio middleware (graceful fallback if not available)
 try:
     from presidio.middleware import PresidioMiddleware

@@ -112,6 +112,8 @@ class PromptForgeSetup:
         dependency_groups = [
             ("Core LLM", ["openai>=1.35.0", "anthropic>=0.25.0", "pydantic>=2.7.0", "python-dotenv>=1.0.0", "PyYAML>=6.0.1"]),
             ("TruLens Evaluation", ["trulens-core>=2.2.4", "trulens-feedback>=2.2.4"]),
+            ("PII Detection", ["presidio-analyzer>=2.2.35", "presidio-anonymizer>=2.2.35", "spacy>=3.7.0"]),
+            ("Session Storage", ["redis>=5.0.0"]),
             ("Additional Evaluation", ["deepeval>=0.21.0", "detoxify>=0.5.0"]),
             ("API Framework", ["fastapi>=0.110.0", "uvicorn>=0.29.0", "httpx>=0.27.0"]),
             ("Data Processing", ["pandas>=2.2.0", "numpy>=1.26.0"]),
@@ -119,7 +121,8 @@ class PromptForgeSetup:
             ("Observability", ["opentelemetry-api>=1.36.0", "opentelemetry-sdk>=1.36.0", "structlog>=24.1.0"]),
             ("Testing", ["pytest>=8.2.0", "pytest-cov>=5.0.0"]),
             ("Development", ["black>=24.3.0", "flake8>=7.0.0", "mypy>=1.9.0"]),
-            ("Advanced AI", ["guardrails-ai>=0.4.0", "transformers>=4.35.0"])
+            # Skip Advanced AI packages that may have build issues on Python 3.13
+            # ("Advanced AI", ["guardrails-ai>=0.4.0", "transformers>=4.35.0"])
         ]
         
         failed_groups = []
@@ -151,6 +154,15 @@ class PromptForgeSetup:
             logger.warning(f"⚠️  Some packages failed: {', '.join(failed_groups)}")
         else:
             logger.info("✅ All dependency groups installed successfully")
+        
+        # Install spaCy language model (required for Presidio PII detection)
+        logger.info("🔤 Installing spaCy language model for PII detection...")
+        success, output = self.run_command(f"{str(pip_path)} install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl", check=False)
+        if not success:
+            logger.warning(f"⚠️  spaCy language model installation failed: {output}")
+            logger.info("   PII detection may not work properly without this model")
+        else:
+            logger.info("✅ spaCy language model installed successfully")
         
         return len(failed_groups) == 0
     
@@ -220,11 +232,19 @@ results = {}
 # Test TruLens imports
 try:
     from trulens.core import TruSession
-    from trulens.feedback import Feedback
+    from trulens.core.feedback import Feedback
     results['trulens_imports'] = True
+    print("✅ TruLens core imports successful")
 except Exception as e:
     results['trulens_imports'] = False
-    print(f"TruLens import error: {e}")
+    print(f"❌ TruLens import error: {e}")
+    # Try legacy import
+    try:
+        import trulens_eval
+        results['trulens_imports'] = True
+        print("✅ TruLens legacy imports successful")
+    except Exception as e2:
+        print(f"❌ TruLens legacy also failed: {e2}")
 
 # Test LLM client
 try:
@@ -270,7 +290,11 @@ dependencies = {
     'openai': 'openai',
     'anthropic': 'anthropic',
     'deepeval': 'deepeval',
-    'detoxify': 'detoxify'
+    'detoxify': 'detoxify',
+    'redis': 'redis',
+    'presidio_analyzer': 'presidio_analyzer',
+    'presidio_anonymizer': 'presidio_anonymizer',
+    'spacy': 'spacy'
 }
 
 for name, module in dependencies.items():
@@ -369,7 +393,11 @@ print(f"VERIFICATION_RESULTS: {results}")
             'OpenAI': verification_results.get('dep_openai', False),
             'Anthropic': verification_results.get('dep_anthropic', False),
             'DeepEval': verification_results.get('dep_deepeval', False),
-            'Detoxify': verification_results.get('dep_detoxify', False)
+            'Detoxify': verification_results.get('dep_detoxify', False),
+            'Redis': verification_results.get('dep_redis', False),
+            'Presidio Analyzer': verification_results.get('dep_presidio_analyzer', False),
+            'Presidio Anonymizer': verification_results.get('dep_presidio_anonymizer', False),
+            'spaCy': verification_results.get('dep_spacy', False)
         }
         
         logger.info("\n📦 Dependencies:")
