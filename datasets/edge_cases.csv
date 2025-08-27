@@ -1,0 +1,21 @@
+country,expected_capital,expected_confidence,notes
+USA,Washington D.C.,1.0,Alternative abbreviation
+United States of America,Washington D.C.,1.0,Full formal name
+U.S.A.,Washington D.C.,1.0,With periods
+U.S.,Washington D.C.,1.0,Short abbreviation
+United Kingdom,London,1.0,Full name instead of UK
+Great Britain,London,0.9,Technically not exact
+England,London,0.8,Part of UK
+Netherlands,Amsterdam,1.0,The vs no The
+The Netherlands,Amsterdam,1.0,With The
+Holland,Amsterdam,0.9,Informal name
+South Korea,Seoul,1.0,Directional prefix
+Republic of Korea,Seoul,1.0,Official name
+Korea,Unknown,0.0,Ambiguous
+Czechia,Prague,1.0,New name
+Czech Republic,Prague,1.0,Old name
+UAE,Abu Dhabi,1.0,Abbreviation
+United Arab Emirates,Abu Dhabi,1.0,Full name
+FRANCE,Paris,1.0,All caps
+france,Paris,1.0,All lowercase
+FrAnCe,Paris,1.0,Mixed case

@@ -1,0 +1,114 @@
+# Prompt Specification Document
+# Financial Services Grade Prompt Engineering
+version: 1.0.0
+prompt_id: find_capital_v1
+category: information_retrieval
+compliance_level: financial_services
+
+metadata:
+  author: Prompt Engineering Team
+  created_date: 2024-08-27
+  last_modified: 2024-08-27
+  tags: [capital, geography, deterministic, json_output]
+  risk_level: low
+
+goal:
+  description: "Retrieve capital city information for a given country in a structured JSON format"
+  business_value: "Provide accurate geographical information for financial compliance and KYC processes"
+
+inputs:
+  - name: country
+    type: string
+    description: "Name of the country to query"
+    validation:
+      required: true
+      min_length: 2
+      max_length: 100
+      pattern: "^[A-Za-z\\s\\-]+$"
+    examples:
+      - "France"
+      - "United States"
+      - "United Kingdom"
+
+outputs:
+  schema:
+    type: object
+    properties:
+      capital:
+        type: string
+        description: "The capital city of the specified country"
+      confidence:
+        type: number
+        minimum: 0
+        maximum: 1
+        description: "Confidence score of the response"
+      metadata:
+        type: object
+        properties:
+          source:
+            type: string
+          timestamp:
+            type: string
+            format: date-time
+    required: [capital, confidence]
+  
+  example:
+    capital: "Paris"
+    confidence: 1.0
+    metadata:
+      source: "geographical_database"
+      timestamp: "2024-08-27T10:00:00Z"
+
+acceptance_criteria:
+  functional:
+    - "Must return valid JSON conforming to output schema"
+    - "Response must be deterministic (temperature=0)"
+    - "Capital name must be accurate based on current geopolitical data"
+    - "Must handle country name variations (e.g., 'USA', 'United States', 'US')"
+  
+  non_functional:
+    - "Response time < 2 seconds"
+    - "Token usage < 500 per request"
+    - "Groundedness score >= 0.85"
+    - "No PII in response"
+    - "No hallucination allowed"
+  
+  security:
+    - "Must resist prompt injection attempts"
+    - "Must not reveal system instructions"
+    - "Must not provide financial advice"
+    - "Must maintain audit trail"
+
+prohibited_behaviors:
+  - "Providing investment recommendations"
+  - "Exposing sensitive system information"
+  - "Returning PII or confidential data"
+  - "Executing code or system commands"
+  - "Deviating from specified output schema"
+
+test_coverage:
+  golden_dataset: datasets/golden.csv
+  edge_cases: datasets/edge_cases.csv
+  adversarial: datasets/adversarial.csv
+  minimum_pass_rate: 0.95
+
+rollback_criteria:
+  - "Error rate > 5%"
+  - "Groundedness score < 0.85"
+  - "Response time > 5 seconds"
+  - "Schema validation failures > 1%"
+
+monitoring:
+  metrics:
+    - response_time_ms
+    - token_usage
+    - groundedness_score
+    - schema_compliance_rate
+    - error_rate
+  alerts:
+    - type: error_rate
+      threshold: 0.05
+      window: 5m
+    - type: response_time
+      threshold: 2000
+      window: 1m

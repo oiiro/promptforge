@@ -1,0 +1,242 @@
+# Financial Services Grade Governance Configuration
+# Defines acceptable behavior, prohibited outputs, and compliance requirements
+
+version: "1.0.0"
+compliance_framework: "financial_services_soc2"
+
+# Acceptable Behavior Guidelines
+acceptable_behavior:
+  output_requirements:
+    - "Must return valid JSON conforming to predefined schema"
+    - "Must provide accurate geographical information"
+    - "Must include confidence scores for uncertainty quantification"
+    - "Must maintain deterministic responses (same input → same output)"
+    
+  response_characteristics:
+    - "Professional and factual tone"
+    - "Concise and structured responses"
+    - "Clear error handling with appropriate fallbacks"
+    - "Traceable decision-making process"
+
+# Prohibited Outputs (Financial Services Compliance)
+prohibited_outputs:
+  financial_advice:
+    - "Investment recommendations"
+    - "Stock trading suggestions"
+    - "Portfolio management advice"
+    - "Financial predictions or forecasts"
+    - "Tax advice"
+    - "Insurance recommendations"
+    
+  sensitive_information:
+    - "Personal Identifiable Information (PII)"
+    - "Credit card numbers, SSNs, or account numbers"
+    - "Internal system information or architecture details"
+    - "API keys, tokens, or credentials"
+    - "Customer data or confidential business information"
+    
+  inappropriate_content:
+    - "Toxic, hateful, or discriminatory language"
+    - "Adult or inappropriate content"
+    - "Violent or harmful instructions"
+    - "Misleading or false information"
+    - "Promotional or marketing content"
+    
+  system_manipulation:
+    - "Attempts to modify system instructions"
+    - "Extraction of prompt templates"
+    - "Bypassing of security controls"
+    - "Unauthorized system commands"
+
+# Quality Thresholds (Configurable by Environment)
+quality_thresholds:
+  production:
+    accuracy_threshold: 0.95
+    confidence_threshold: 0.80
+    response_time_ms: 2000
+    toxicity_threshold: 0.0
+    groundedness_score: 0.85
+    
+  staging:
+    accuracy_threshold: 0.90
+    confidence_threshold: 0.75
+    response_time_ms: 3000
+    toxicity_threshold: 0.1
+    groundedness_score: 0.80
+    
+  development:
+    accuracy_threshold: 0.85
+    confidence_threshold: 0.70
+    response_time_ms: 5000
+    toxicity_threshold: 0.2
+    groundedness_score: 0.75
+
+# Audit and Compliance Requirements
+audit_requirements:
+  logging:
+    - "All requests and responses must be logged"
+    - "User interactions must be traceable"
+    - "Guardrail violations must be recorded"
+    - "Performance metrics must be captured"
+    
+  retention:
+    - "Audit logs: 7 years (financial services requirement)"
+    - "Performance metrics: 2 years"
+    - "Error logs: 5 years"
+    - "Security incident logs: 10 years"
+    
+  reporting:
+    - "Weekly performance reports"
+    - "Monthly compliance reports"
+    - "Quarterly security assessments"
+    - "Annual compliance audits"
+
+# Security Controls
+security_controls:
+  input_validation:
+    - "PII detection and redaction"
+    - "Prompt injection defense"
+    - "SQL injection prevention"
+    - "XSS attack prevention"
+    - "Command injection blocking"
+    
+  output_validation:
+    - "JSON schema compliance"
+    - "Content safety verification"
+    - "Toxicity scanning"
+    - "Bias detection"
+    - "Hallucination prevention"
+    
+  access_controls:
+    - "API authentication required"
+    - "Rate limiting (100 requests/minute)"
+    - "IP-based restrictions (if configured)"
+    - "Role-based access control"
+
+# Monitoring and Alerting
+monitoring:
+  metrics:
+    - "Request volume and patterns"
+    - "Response times and latencies"
+    - "Error rates and types"
+    - "Guardrail violation rates"
+    - "Model performance scores"
+    - "Resource utilization"
+    
+  alerts:
+    error_rate:
+      threshold: 0.05
+      window: "5 minutes"
+      severity: "warning"
+      
+    response_time:
+      threshold: 2000
+      window: "1 minute" 
+      severity: "warning"
+      
+    guardrail_violations:
+      threshold: 0.01
+      window: "1 minute"
+      severity: "critical"
+      
+    toxicity_detection:
+      threshold: 0.1
+      window: "immediate"
+      severity: "critical"
+
+# Incident Response
+incident_response:
+  severity_levels:
+    critical:
+      - "Security breach or data exposure"
+      - "Systematic prompt injection success"
+      - "Toxic content generation"
+      - "Financial advice generation"
+      
+    high:
+      - "Sustained high error rates (>10%)"
+      - "Performance degradation (>5s response time)"
+      - "Multiple guardrail failures"
+      
+    medium:
+      - "Intermittent errors"
+      - "Slow response times"
+      - "Single guardrail violations"
+      
+    low:
+      - "Minor performance issues"
+      - "Non-critical logging failures"
+  
+  response_procedures:
+    critical:
+      - "Immediately disable affected endpoints"
+      - "Notify security team within 15 minutes"
+      - "Begin incident documentation"
+      - "Activate rollback procedures"
+      
+    high:
+      - "Investigate within 1 hour"
+      - "Notify technical team"
+      - "Implement temporary mitigations"
+      - "Schedule emergency maintenance if needed"
+
+# Change Management
+change_management:
+  approval_process:
+    prompt_changes:
+      - "Peer review required"
+      - "Security review for major changes"
+      - "Stakeholder approval for business logic changes"
+      
+    guardrail_changes:
+      - "Security team approval required"
+      - "Compliance team review"
+      - "Full testing suite execution"
+      
+    configuration_changes:
+      - "Technical lead approval"
+      - "Impact assessment required"
+      - "Rollback plan documented"
+  
+  testing_requirements:
+    - "All changes must pass full test suite"
+    - "Adversarial testing required for security changes"
+    - "Performance testing for configuration changes"
+    - "Compliance validation for business logic changes"
+  
+  deployment_gates:
+    - "Code review approval"
+    - "Automated tests passing (100%)"
+    - "Security scan clean"
+    - "Performance benchmarks met"
+    - "Compliance checks passed"
+
+# Data Governance
+data_governance:
+  data_classification:
+    public:
+      - "Country names and capitals"
+      - "General geographical information"
+      
+    internal:
+      - "Model performance metrics"
+      - "Usage statistics"
+      
+    confidential:
+      - "User interaction logs"
+      - "Error details"
+      
+    restricted:
+      - "Security incident details"
+      - "Audit logs with PII"
+  
+  data_retention:
+    - "Automatic deletion of expired logs"
+    - "Secure archival for compliance data"
+    - "Regular data inventory and classification review"
+  
+  privacy_controls:
+    - "PII detection and handling procedures"
+    - "Data anonymization for analytics"
+    - "User consent tracking (if applicable)"
+    - "Right to deletion procedures"

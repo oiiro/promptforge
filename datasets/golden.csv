@@ -1,0 +1,21 @@
+country,expected_capital,expected_confidence,notes
+France,Paris,1.0,Standard case
+United States,Washington D.C.,1.0,Full country name
+UK,London,1.0,Abbreviation
+Japan,Tokyo,1.0,Asian country
+Germany,Berlin,1.0,European country
+Australia,Canberra,1.0,Not Sydney
+Canada,Ottawa,1.0,Not Toronto
+Brazil,Brasília,1.0,Not São Paulo
+India,New Delhi,1.0,Not Mumbai
+China,Beijing,1.0,Not Shanghai
+Russia,Moscow,1.0,Largest country
+South Africa,Pretoria,1.0,Administrative capital
+Mexico,Mexico City,1.0,Same name pattern
+Italy,Rome,1.0,Historical capital
+Spain,Madrid,1.0,Iberian peninsula
+Argentina,Buenos Aires,1.0,South American
+Egypt,Cairo,1.0,African country
+Saudi Arabia,Riyadh,1.0,Middle Eastern
+Sweden,Stockholm,1.0,Scandinavian
+Switzerland,Bern,1.0,Not Zurich

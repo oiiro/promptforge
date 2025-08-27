@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Capital City Response Schema",
+  "description": "Financial services compliant schema for capital city information",
+  "type": "object",
+  "properties": {
+    "capital": {
+      "type": "string",
+      "description": "The capital city of the specified country",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[A-Za-z\\s\\-\\'\\,\\.]+$"
+    },
+    "confidence": {
+      "type": "number",
+      "description": "Confidence score of the response",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata about the response",
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": ["geographical_database", "cached", "computed"],
+          "description": "Source of the information"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 formatted timestamp"
+        },
+        "model": {
+          "type": "string",
+          "description": "Model used for generation"
+        },
+        "token_usage": {
+          "type": "object",
+          "properties": {
+            "prompt_tokens": {"type": "integer"},
+            "completion_tokens": {"type": "integer"},
+            "total_tokens": {"type": "integer"}
+          }
+        }
+      },
+      "required": ["source", "timestamp"]
+    }
+  },
+  "required": ["capital", "confidence"],
+  "additionalProperties": false
+}

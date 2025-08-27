@@ -1,0 +1,95 @@
+# PromptForge Dependencies - Financial Services Grade Prompt Engineering SDLC
+# Optimized for Python 3.9+ with compatibility for 3.13
+
+# =============================================================================
+# Core LLM Dependencies
+# =============================================================================
+openai>=1.35.0
+anthropic>=0.25.0
+pydantic>=2.7.0
+python-dotenv>=1.0.0
+PyYAML>=6.0.1
+jsonschema>=4.21.0
+
+# =============================================================================
+# Evaluation and Testing Framework
+# =============================================================================
+# TruLens - Primary evaluation and monitoring backbone
+trulens-eval>=2.2.4
+trulens-apps-langchain>=2.2.4
+
+# DeepEval - Secondary evaluation framework
+deepeval>=0.21.0
+
+# Detoxify for toxicity detection
+detoxify>=0.5.0
+
+# Testing framework
+pytest>=8.2.0
+pytest-cov>=5.0.0
+
+# =============================================================================
+# API and Web Framework
+# =============================================================================
+fastapi>=0.110.0
+uvicorn>=0.29.0
+httpx>=0.27.0
+
+# =============================================================================
+# Data Processing
+# =============================================================================
+pandas>=2.2.0
+numpy>=1.26.0
+
+# =============================================================================
+# Security and Validation
+# =============================================================================
+cryptography>=42.0.0
+passlib[bcrypt]>=1.7.4
+
+# =============================================================================
+# Observability and Monitoring
+# =============================================================================
+opentelemetry-api>=1.36.0
+opentelemetry-sdk>=1.36.0
+structlog>=24.1.0
+
+# =============================================================================
+# Development Tools
+# =============================================================================
+black>=24.3.0
+flake8>=7.0.0
+mypy>=1.9.0
+
+# =============================================================================
+# Advanced AI/ML Packages
+# =============================================================================
+# Guardrails and Safety
+guardrails-ai>=0.4.0
+detoxify>=0.5.0
+
+# Transformers (for advanced NLP features)
+transformers>=4.35.0
+torch>=2.0.0
+
+# =============================================================================
+# Optional Dependencies
+# =============================================================================
+# Uncomment as needed for specific use cases
+
+# LangChain integration (uncomment if needed)
+# langchain>=0.1.0
+# langchain-openai>=0.1.0
+# langchain-anthropic>=0.1.0
+
+# Advanced evaluation metrics (uncomment if needed)
+# rouge-score>=0.1.2
+# bert-score>=0.3.13
+
+# Database support (uncomment if needed)
+# sqlalchemy>=2.0.0
+# alembic>=1.12.0
+
+# Additional security (uncomment if needed)
+# python-jose[cryptography]>=3.3.0
+# bcrypt>=4.0.0
