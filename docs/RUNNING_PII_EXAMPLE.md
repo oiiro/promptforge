@@ -40,6 +40,8 @@ python3 --version
 
 **✅ API Server Status**: The orchestration/app.py FastAPI server is now fully operational with OpenTelemetry tracing, async health checks, and Pydantic V2 compatibility.
 
+**🔐 Authentication**: API endpoints require Bearer token authentication. Use `Authorization: Bearer demo-token` header for testing.
+
 ### Option A: Automated Setup (Recommended)
 ```bash
 # Run the comprehensive setup script
