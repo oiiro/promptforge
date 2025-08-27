@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Production-grade Prompt Orchestration API
 Financial services compliant FastAPI application with comprehensive monitoring

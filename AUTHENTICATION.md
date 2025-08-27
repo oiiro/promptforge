@@ -201,7 +201,7 @@ python3 scripts/test_api_server.py
 
 3. **Server Not Running**
    - **Cause**: API server not started
-   - **Solution**: Run `./venv/bin/python3 orchestration/app.py`
+   - **Solution**: Run `./start_server.sh` or `./venv/bin/python orchestration/app.py`
 
 4. **TruLens Dashboard 404 Not Found**
    - **Cause**: Using incorrect URL path `/api/trulens/dashboard`

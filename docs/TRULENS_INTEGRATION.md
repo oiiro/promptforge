@@ -161,12 +161,17 @@ Overall Result: 5/6 tests passed - Most tests passed. TruLens integration is mos
 
 ### Primary Access Method
 ```bash
-# Start API server with TruLens integration
+# Start API server with TruLens integration (recommended method)
+./start_server.sh
+
+# Alternative: Direct venv Python execution
 ./venv/bin/python orchestration/app.py
 
 # Access dashboard via API endpoint (requires Bearer token)
 curl -H "Authorization: Bearer demo-token" http://localhost:8000/api/v1/trulens/dashboard
 ```
+
+**Important**: Always use the virtual environment Python (`./venv/bin/python`) or the startup script (`./start_server.sh`) to avoid module import errors.
 
 **Important**: The correct dashboard URL is `/api/v1/trulens/dashboard` (not `/api/trulens/dashboard`)
 
@@ -401,14 +406,26 @@ sqlalchemy>=2.0.0
 alembic>=1.12.0
 ```
 
-**6. API Key Issues**  
+**6. FastAPI ModuleNotFoundError**
+```bash
+# Issue: ModuleNotFoundError: No module named 'fastapi'
+# Root Cause: Using system Python instead of virtual environment Python
+# Solution: Use virtual environment Python or startup script
+./start_server.sh                    # Recommended method
+./venv/bin/python orchestration/app.py  # Alternative method
+
+# Verify FastAPI is installed in venv:
+./venv/bin/python -c "import fastapi; print('FastAPI OK')"
+```
+
+**7. API Key Issues**  
 ```bash
 # Issue: LLMProvider initialization fails
 # Solution: Use MockProvider for testing or configure API keys
 # MockProvider automatically used as fallback
 ```
 
-**7. Database Connection**
+**8. Database Connection**
 ```bash
 # Issue: TruLens database connection fails
 # Solution: Check database URL and permissions
