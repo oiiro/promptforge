@@ -18,6 +18,7 @@ jsonschema>=4.21.0
 trulens-core>=2.2.4
 trulens-feedback>=2.2.4
 trulens-providers-openai>=2.2.4
+trulens-dashboard>=2.2.4
 
 # PII Detection and Anonymization (Microsoft Presidio)
 presidio-analyzer>=2.2.35
