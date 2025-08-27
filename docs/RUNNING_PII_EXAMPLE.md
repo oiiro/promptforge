@@ -346,8 +346,17 @@ async def test_pii():
         session_id='test_session',
         restore_pii=True
     )
-    print(f'PII Protected Response: {response[\"content\"]}')
+    # PIIAware client returns structured response - extract the nested response content
+    inner_response = response.get('response', {})
+    if 'content' in inner_response:
+        print(f'PII Protected Response: {inner_response[\"content\"]}')
+    else:
+        # MockProvider returns structured data like {\"capital\": \"Paris\", \"confidence\": 1.0}
+        # Or guardrails may block request: \"Request blocked by security guardrails\"
+        print(f'PII Protected Response: {inner_response}')
     print(f'PII Metadata: {response.get(\"pii_metadata\", {})}')
+    print(f'Status: {response.get(\"status\", \"unknown\")}')
+    print(f'Note: SSN in query may trigger guardrails blocking for security')
 
 asyncio.run(test_pii())
 "
@@ -368,7 +377,9 @@ async def test_service():
         include_context=True,
         restore_pii=True
     )
-    print(f'Service Response: {result[\"response\"][\"content\"]}')
+    # CapitalFinderService wraps PIIAware response - extract content properly
+    response_content = result[\"response\"].get(\"content\", result[\"response\"])
+    print(f'Service Response: {response_content}')
     print(f'Processing Time: {result[\"processing_time_seconds\"]}s')
     
     # Cleanup
@@ -411,8 +422,8 @@ async def test_custom_policy():
         
         result = await middleware.anonymize(test_text, session_id='custom_test')
         print(f'Original: {test_text}')
-        print(f'Anonymized: {result[\"anonymized_text\"]}')
-        print(f'Entities Detected: {len(result[\"entities\"])}')
+        print(f'Anonymized: {result.get(\"anonymized_text\", \"Not available\")}')
+        print(f'Entities Detected: {len(result.get(\"entities\", []))}')
         
     except ImportError:
         print('⚠️  Presidio not available - using mock example')
