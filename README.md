@@ -247,7 +247,31 @@ curl -X POST http://localhost:8000/api/v1/retirement-eligibility \
 #     "anonymized_entities": ["<NAME_1>", "<EMAIL_ADDRESS_1>", "<PHONE_NUMBER_1>"]
 #   }
 # }
+
+# 🆕 Access TruLens Monitoring Dashboard
+curl -H "Authorization: Bearer demo-token" http://localhost:8000/api/v1/trulens/dashboard
+
+# Alternative: Native TruLens Dashboard (if API endpoint unavailable)
+python -c "
+from trulens.core import TruSession
+session = TruSession()
+session.run_dashboard(port=8501)
+"
+# Then access: http://localhost:8501
 ```
+
+### 🆕 TruLens Dashboard Access
+
+The TruLens monitoring dashboard provides real-time observability for your prompt evaluations:
+
+- **API Dashboard**: `http://localhost:8000/api/v1/trulens/dashboard` (requires Bearer token authentication)
+- **Native Dashboard**: `http://localhost:8501` (alternative access method)
+
+**Common Issues**:
+- **404 Not Found**: Ensure you're using `/api/v1/trulens/dashboard` (not `/api/trulens/dashboard`)  
+- **503 Service Unavailable**: Use the native dashboard alternative or check TruLens dependencies
+
+For complete troubleshooting, see [docs/TRULENS_INTEGRATION.md](docs/TRULENS_INTEGRATION.md)
 
 ## 🔒 Security Features
 

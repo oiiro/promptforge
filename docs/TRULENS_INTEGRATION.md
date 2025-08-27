@@ -80,6 +80,24 @@ monitor.start_monitoring()
 
 ## Installation and Setup
 
+### Required Dependencies
+Ensure all TruLens dependencies are installed in requirements.txt:
+```python
+# TruLens - Primary evaluation and monitoring backbone
+trulens-core>=2.2.4
+trulens-feedback>=2.2.4
+trulens-providers-openai>=2.2.4
+
+# LangChain integration (required for TruLens OpenAI provider)
+langchain>=0.3.27
+langchain-core>=0.3.75
+langchain-community>=0.3.29
+
+# Database support (required for TruLens monitoring)
+sqlalchemy>=2.0.0
+alembic>=1.12.0
+```
+
 ### Automated Setup
 ```bash
 # Run the complete setup script
@@ -92,8 +110,11 @@ python scripts/setup_promptforge.py
 python3 -m venv venv
 source venv/bin/activate
 
-# Install dependencies
+# Install dependencies including TruLens providers
 pip install -r requirements.txt
+
+# Install missing TruLens providers if needed
+pip install trulens-providers-openai langchain langchain-core langchain-community
 
 # Verify installation
 python scripts/verify_trulens_setup.py
@@ -134,6 +155,88 @@ VERIFICATION SUMMARY
 ⚠️  PARTIAL - Offline Evaluation (requires API keys)
 
 Overall Result: 5/6 tests passed - Most tests passed. TruLens integration is mostly functional.
+```
+
+## TruLens Dashboard Access
+
+### Primary Access Method
+```bash
+# Start API server with TruLens integration
+./venv/bin/python orchestration/app.py
+
+# Access dashboard via API endpoint (requires Bearer token)
+curl -H "Authorization: Bearer demo-token" http://localhost:8000/api/v1/trulens/dashboard
+```
+
+**Important**: The correct dashboard URL is `/api/v1/trulens/dashboard` (not `/api/trulens/dashboard`)
+
+### Alternative Access Methods
+
+#### Method 1: Native TruLens Dashboard
+```python
+from trulens.core import TruSession
+session = TruSession()
+session.run_dashboard(port=8501)
+# Access: http://localhost:8501
+```
+
+#### Method 2: Direct Database Access
+```python
+import sqlite3
+conn = sqlite3.connect('trulens.db')
+# Query TruLens records directly
+```
+
+### Dashboard Troubleshooting
+
+**404 Not Found Error**:
+- **Cause**: Incorrect URL path
+- **Solution**: Use `/api/v1/trulens/dashboard` (not `/api/trulens/dashboard`)
+
+**503 Service Unavailable Error**:
+- **Cause**: TruLens not properly initialized or missing dependencies
+- **Solution**: Install missing packages and use alternative access methods
+
+```bash
+pip install trulens-providers-openai langchain langchain-core langchain-community
+```
+
+## Multi-Person Retirement Eligibility API Integration
+
+### TruLens Monitoring for Multi-Entity Processing
+
+The `/api/v1/retirement-eligibility` endpoint demonstrates advanced TruLens integration with PII protection:
+
+```python
+# Custom feedback functions for multi-person scenarios
+def create_pii_feedback_functions():
+    return {
+        "pii_detection_feedback": lambda query, response, metadata: 
+            1.0 if metadata.get("pii_detected") else 0.5,
+        "anonymization_quality_feedback": lambda query, response, metadata:
+            1.0 if metadata.get("anonymization_applied") else 0.0
+    }
+```
+
+### Monitoring Workflow
+1. **Request Processing**: TruLens tracks multi-person query processing
+2. **PII Detection**: Monitors Presidio PII entity detection accuracy
+3. **Anonymization**: Tracks numbered placeholder generation
+4. **LLM Processing**: Monitors mock/real LLM processing with anonymized data
+5. **Deanonymization**: Tracks response reconstruction with original PII
+6. **Response Validation**: Validates multi-person response structure
+
+### Testing TruLens with Multi-Person API
+```bash
+# Test with comprehensive multi-person query
+curl -X POST http://localhost:8000/api/v1/retirement-eligibility \
+  -H "Authorization: Bearer demo-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Evaluate retirement eligibility for John Smith, age 65, phone 555-123-4567, and Sarah Johnson, age 62, email sarah.johnson@company.com",
+    "enable_pii_protection": true,
+    "enable_monitoring": true
+  }'
 ```
 
 ## Usage Examples
@@ -242,22 +345,70 @@ TRULENS_DATABASE_URL=postgresql://user:password@host:port/database
 
 ### Common Issues
 
-**1. Import Errors**
+**1. TruLens Import Errors**
 ```bash
-# Issue: ModuleNotFoundError for trulens modules
-# Solution: Ensure virtual environment is activated and dependencies installed
-source venv/bin/activate
-pip install -r requirements.txt
+# Issue: ImportError: No module named 'trulens.providers'
+# Root Cause: Missing trulens-providers-openai package
+# Solution: Install the missing OpenAI provider package
+pip install trulens-providers-openai>=2.2.4
+
+# Also ensure LangChain dependencies are installed
+pip install langchain>=0.3.27 langchain-core>=0.3.75 langchain-community>=0.3.29
 ```
 
-**2. API Key Issues**  
+**2. Dashboard 404 Not Found**
+```bash
+# Issue: {"detail":"Not Found"} when accessing TruLens dashboard
+# Root Cause: Incorrect URL path - using /api/trulens/dashboard instead of /api/v1/trulens/dashboard
+# Solution: Use the correct URL path
+curl -H "Authorization: Bearer demo-token" http://localhost:8000/api/v1/trulens/dashboard
+```
+
+**3. TruLens Service Unavailable (503)**
+```bash
+# Issue: 503 Service Unavailable even with correct URL
+# Root Cause: TruLens initialization hanging or missing dependencies
+# Solution 1: Use native TruLens dashboard as alternative
+python -c "
+from trulens.core import TruSession
+session = TruSession()
+session.run_dashboard(port=8501)
+"
+# Then access: http://localhost:8501
+
+# Solution 2: Check TruLens database initialization
+ls -la *.db  # Check if trulens.db exists
+```
+
+**4. Server Hanging During TruLens Initialization**
+```bash
+# Issue: FastAPI server hangs during startup when initializing TruLens
+# Root Cause: TruLens database setup or provider initialization issues
+# Solution: Use fallback initialization with error handling
+# The app.py includes graceful fallback when TruLens fails to initialize
+```
+
+**5. Missing Dependencies in requirements.txt**
+```bash
+# Issue: Various import errors for TruLens components
+# Root Cause: requirements.txt missing critical TruLens dependencies
+# Solution: Ensure requirements.txt includes all necessary packages:
+trulens-providers-openai>=2.2.4
+langchain>=0.3.27
+langchain-core>=0.3.75
+langchain-community>=0.3.29
+sqlalchemy>=2.0.0
+alembic>=1.12.0
+```
+
+**6. API Key Issues**  
 ```bash
 # Issue: LLMProvider initialization fails
 # Solution: Use MockProvider for testing or configure API keys
 # MockProvider automatically used as fallback
 ```
 
-**3. Database Connection**
+**7. Database Connection**
 ```bash
 # Issue: TruLens database connection fails
 # Solution: Check database URL and permissions

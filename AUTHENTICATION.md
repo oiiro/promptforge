@@ -203,6 +203,23 @@ python3 scripts/test_api_server.py
    - **Cause**: API server not started
    - **Solution**: Run `./venv/bin/python3 orchestration/app.py`
 
+4. **TruLens Dashboard 404 Not Found**
+   - **Cause**: Using incorrect URL path `/api/trulens/dashboard`
+   - **Solution**: Use correct path `/api/v1/trulens/dashboard`
+   ```bash
+   curl -H "Authorization: Bearer demo-token" http://localhost:8000/api/v1/trulens/dashboard
+   ```
+
+5. **TruLens Dashboard Service Unavailable**
+   - **Cause**: TruLens not properly initialized or missing dependencies
+   - **Solution**: Use alternative native dashboard access:
+   ```python
+   from trulens.core import TruSession
+   session = TruSession()
+   session.run_dashboard(port=8501)
+   # Access: http://localhost:8501
+   ```
+
 ### Debug Commands
 
 #### Check Server Status

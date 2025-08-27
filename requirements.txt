@@ -17,6 +17,7 @@ jsonschema>=4.21.0
 # TruLens - Primary evaluation and monitoring backbone
 trulens-core>=2.2.4
 trulens-feedback>=2.2.4
+trulens-providers-openai>=2.2.4
 
 # PII Detection and Anonymization (Microsoft Presidio)
 presidio-analyzer>=2.2.35
@@ -89,18 +90,18 @@ detoxify>=0.5.0
 # =============================================================================
 # Uncomment as needed for specific use cases
 
-# LangChain integration (uncomment if needed)
-# langchain>=0.1.0
-# langchain-openai>=0.1.0
-# langchain-anthropic>=0.1.0
+# LangChain integration (required for TruLens OpenAI provider)
+langchain>=0.3.27
+langchain-core>=0.3.75
+langchain-community>=0.3.29
 
 # Advanced evaluation metrics (uncomment if needed)
 # rouge-score>=0.1.2
 # bert-score>=0.3.13
 
-# Database support (uncomment if needed)
-# sqlalchemy>=2.0.0
-# alembic>=1.12.0
+# Database support (required for TruLens monitoring)
+sqlalchemy>=2.0.0
+alembic>=1.12.0
 
 # Additional security (uncomment if needed)
 # python-jose[cryptography]>=3.3.0

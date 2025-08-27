@@ -186,7 +186,7 @@ When `enable_monitoring: true`:
 - **PII Detection Scoring**: Evaluates PII detection accuracy
 - **Anonymization Quality**: Measures anonymization effectiveness
 - **Processing Metrics**: Tracks performance and latency
-- **Dashboard Access**: Real-time monitoring via `/api/v1/trulens/dashboard`
+- **Dashboard Access**: Real-time monitoring via `/api/v1/trulens/dashboard` (requires Bearer token authentication)
 
 ### Feedback Functions
 1. **PII Detection Feedback**: Scores PII entity detection (0.0-1.0)
@@ -340,14 +340,34 @@ For production deployment:
    - **Solution**: Check spacy model installation: `python -m spacy download en_core_web_sm`
 
 2. **"TruLens monitoring unavailable"**
-   - **Cause**: TruLens import failures
-   - **Solution**: Verify TruLens installation: `pip install trulens-core trulens-feedback`
+   - **Cause**: TruLens import failures or missing OpenAI provider
+   - **Solution**: Install all TruLens dependencies:
+     ```bash
+     pip install trulens-core trulens-feedback trulens-providers-openai
+     pip install langchain langchain-core langchain-community
+     pip install sqlalchemy alembic
+     ```
 
 3. **"Authentication failed"**
    - **Cause**: Missing or invalid Bearer token
    - **Solution**: Include header: `Authorization: Bearer demo-token`
 
-4. **Server startup errors**
+4. **TruLens dashboard 404 Not Found**
+   - **Cause**: Using incorrect URL path
+   - **Solution**: Use correct URL: `/api/v1/trulens/dashboard` (not `/api/trulens/dashboard`)
+
+5. **TruLens dashboard 503 Service Unavailable**
+   - **Cause**: TruLens not properly initialized or database setup hanging
+   - **Solution**: Alternative access via native dashboard:
+     ```bash
+     python -c "
+     from trulens.core import TruSession
+     session = TruSession()
+     session.run_dashboard(port=8501)
+     "
+     ```
+
+6. **Server startup errors**
    - **Cause**: Missing dependencies or configuration
    - **Solution**: Run installation verification: `python verify_installation.py`
 
@@ -368,11 +388,22 @@ curl http://localhost:8000/health
 # Verify authentication
 curl -H "Authorization: Bearer demo-token" http://localhost:8000/api/v1/metrics
 
+# Test TruLens dashboard access (correct URL)
+curl -H "Authorization: Bearer demo-token" http://localhost:8000/api/v1/trulens/dashboard
+
 # Test endpoint with minimal data
 curl -X POST http://localhost:8000/api/v1/retirement-eligibility \
   -H "Authorization: Bearer demo-token" \
   -H "Content-Type: application/json" \
   -d '{"query": "Test eligibility for John age 65"}'
+
+# Start native TruLens dashboard (alternative access method)
+python -c "
+from trulens.core import TruSession
+session = TruSession()
+session.run_dashboard(port=8501)
+"
+# Then access: http://localhost:8501
 ```
 
 ---
