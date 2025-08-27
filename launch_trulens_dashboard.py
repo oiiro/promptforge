@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env ./venv/bin/python
 """
 TruLens Dashboard Launcher for Browser Access
 Starts the native TruLens dashboard on port 8501
@@ -8,6 +8,12 @@ import sys
 import os
 from pathlib import Path
 
+# Add venv/bin to PATH so TruLens can find streamlit
+current_dir = Path(__file__).parent
+venv_bin = current_dir / "venv" / "bin"
+if str(venv_bin) not in os.environ.get("PATH", ""):
+    os.environ["PATH"] = f"{venv_bin}:{os.environ.get('PATH', '')}"
+
 def launch_trulens_dashboard():
     """Launch TruLens dashboard for browser access"""
     print("🚀 Starting TruLens Dashboard...")
@@ -15,21 +21,22 @@ def launch_trulens_dashboard():
     
     try:
         from trulens.core import TruSession
+        from trulens.dashboard.run import run_dashboard
         
         # Initialize TruLens session
         print("🔧 Initializing TruLens session...")
         session = TruSession()
         
         print("✅ TruLens session created successfully")
-        print(f"📊 Database: {session.connector.database_url}")
+        print("📊 Database: SQLite (default.sqlite)")
         print("")
         print("🌐 Starting dashboard...")
         print("   URL: http://localhost:8501")
         print("   Press Ctrl+C to stop")
         print("")
         
-        # Start the dashboard
-        session.run_dashboard(port=8501)
+        # Start the dashboard using the new API
+        run_dashboard(session, port=8501)
         
     except ImportError as e:
         print(f"❌ TruLens import error: {e}")
