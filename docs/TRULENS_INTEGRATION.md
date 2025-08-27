@@ -4,7 +4,41 @@
 
 PromptForge has been enhanced with TruLens v2.2.4 as the evaluation and monitoring backbone, providing comprehensive pre-deployment evaluation and production monitoring capabilities for financial services grade prompt engineering.
 
-## Architecture
+**📋 See [ARCHITECTURE.md](ARCHITECTURE.md) for comprehensive system architecture and shared database design patterns.**
+
+## Shared Database Architecture
+
+TruLens integration uses a **database-mediated architecture** where both the PromptForge API server (8000) and TruLens dashboard server (8501) connect to the same SQLite database (`default.sqlite`):
+
+```
+┌─────────────────────┐    ┌─────────────────────────┐
+│   PromptForge API   │    │   TruLens Dashboard     │
+│   (Port 8000)      │    │   (Port 8501)          │
+│                     │    │                         │
+│ orchestration/app.py│    │launch_trulens_dashboard │
+│ TruSession()        │    │ TruSession()            │
+└─────────┬───────────┘    └─────────┬───────────────┘
+          │                          │
+          └──────────┬─────────────────┘
+                     │
+           ┌─────────▼─────────┐
+           │   Shared Database │
+           │   (default.sqlite) │
+           │                   │
+           │ • Evaluation Data │
+           │ • Session Records │
+           │ • Performance Logs│
+           │ • Feedback Traces │
+           └───────────────────┘
+```
+
+**Key Integration Points:**
+- **Real-time Data Sharing**: API evaluations immediately visible in dashboard
+- **Unified Session Management**: Both services use same `TruSession()` instance  
+- **Persistent Storage**: All evaluation data persists across service restarts
+- **No Service-to-Service Communication**: Database handles all coordination
+
+## Architecture Components
 
 ```
 PromptForge + TruLens Integration
@@ -159,36 +193,58 @@ Overall Result: 5/6 tests passed - Most tests passed. TruLens integration is mos
 
 ## TruLens Dashboard Access
 
-### Primary Access Method
+### Dual-Server Browser Access
+
+PromptForge operates as **two connected servers** sharing the same evaluation database:
+
+**Method 1: Native TruLens Dashboard (Recommended)**
 ```bash
-# Start API server with TruLens integration (recommended method)
+# Terminal 1: Start PromptForge API Server
+./start_server.sh
+# PromptForge API available at: http://localhost:8000
+# Handles prompt execution and evaluation data collection
+
+# Terminal 2: Start TruLens Dashboard  
+./launch_trulens_dashboard.py
+# TruLens Dashboard available at: http://localhost:8501
+# Shows real-time evaluation data from API server
+```
+
+**Method 2: API Endpoint Access**
+```bash
+# Start API server (includes TruLens integration)
 ./start_server.sh
 
-# Alternative: Direct venv Python execution
-./venv/bin/python orchestration/app.py
-
-# Access dashboard via API endpoint (requires Bearer token)
+# Access dashboard via API proxy (requires Bearer token)
 curl -H "Authorization: Bearer demo-token" http://localhost:8000/api/v1/trulens/dashboard
 ```
 
-**Important**: Always use the virtual environment Python (`./venv/bin/python`) or the startup script (`./start_server.sh`) to avoid module import errors.
+### How Both Servers Work Together
 
-**Important**: The correct dashboard URL is `/api/v1/trulens/dashboard` (not `/api/trulens/dashboard`)
+1. **Execute Prompts**: Use PromptForge API (port 8000) to execute prompts with evaluation
+2. **View Results**: Use TruLens Dashboard (port 8501) to see real-time evaluation metrics
+3. **Shared Data**: Both servers read/write to the same `default.sqlite` database
+4. **Live Updates**: Dashboard automatically refreshes with new evaluation data from API
+
+```bash
+# Example workflow:
+# 1. Execute prompt via API (this creates evaluation data)
+curl -X POST http://localhost:8000/api/v1/prompt/execute \
+  -H "Authorization: Bearer demo-token" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Test prompt", "model": "gpt-3.5-turbo"}'
+
+# 2. View evaluation results in dashboard
+# Open browser: http://localhost:8501
+# Evaluation data appears immediately (shared database)
+```
 
 ### Alternative Access Methods
 
-#### Method 1: Native TruLens Dashboard
-```python
-from trulens.core import TruSession
-session = TruSession()
-session.run_dashboard(port=8501)
-# Access: http://localhost:8501
-```
-
-#### Method 2: Direct Database Access
+#### Direct Database Access
 ```python
 import sqlite3
-conn = sqlite3.connect('trulens.db')
+conn = sqlite3.connect('default.sqlite')  # Same database both servers use
 # Query TruLens records directly
 ```
 
