@@ -17,7 +17,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, Response, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 import uvicorn
 from dotenv import load_dotenv
 
@@ -49,7 +49,8 @@ class CapitalRequest(BaseModel):
     provider: Optional[str] = Field(None, description="LLM provider override")
     model: Optional[str] = Field(None, description="Model override")
     
-    @validator('country')
+    @field_validator('country')
+    @classmethod
     def validate_country(cls, v):
         """Validate country input"""
         if not v or len(v.strip()) == 0:
@@ -105,7 +106,7 @@ async def lifespan(app: FastAPI):
     
     # Warm up providers
     try:
-        app.state.llm_client.health_check()
+        await app.state.llm_client.health_check()
         logger.info("LLM provider warmed up successfully")
     except Exception as e:
         logger.warning(f"Failed to warm up LLM provider: {e}")

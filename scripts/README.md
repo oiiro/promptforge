@@ -74,6 +74,17 @@ Runs performance benchmarking tests:
 python3 scripts/performance_benchmark.py
 ```
 
+#### `test_api_server.py` 🚀
+Tests the FastAPI orchestration server:
+- Health endpoint validation
+- Metrics endpoint testing
+- Capital finder API testing
+- API documentation accessibility
+
+```bash
+python3 scripts/test_api_server.py
+```
+
 #### `run_all_tests.py` 🧪
 Comprehensive test suite runner:
 - Executes all test scripts in sequence
