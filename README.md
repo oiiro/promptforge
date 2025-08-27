@@ -12,9 +12,8 @@ promptforge/
 │   ├── trulens_config.py   # TruLens configuration and feedback functions
 │   ├── offline_evaluation.py # Pre-deployment evaluation (golden/adversarial)
 │   └── production_monitoring.py # Real-time production monitoring
-├── scripts/                 # 🆕 Setup and Verification
-│   ├── setup_promptforge.py # Automated installation and configuration
-│   └── verify_trulens_setup.py # Comprehensive integration testing
+├── setup_promptforge.py    # 🆕 Automated installation and configuration
+├── verify_installation.py  # 🆕 Comprehensive integration testing
 ├── prompts/                 # Versioned prompt templates and specifications
 │   └── find_capital/
 │       ├── spec.yml        # Requirements and acceptance criteria
@@ -48,6 +47,8 @@ promptforge/
 
 ## 🚀 Quick Start
 
+> **📖 For detailed PII protection example walkthrough**, see [docs/RUNNING_PII_EXAMPLE.md](docs/RUNNING_PII_EXAMPLE.md)
+
 ### 🆕 Automated Setup (Recommended)
 
 ```bash
@@ -55,10 +56,10 @@ promptforge/
 cd promptforge
 
 # Run automated setup script (includes TruLens integration)
-python scripts/setup_promptforge.py
+python setup_promptforge.py
 
 # Verify installation
-python scripts/verify_trulens_setup.py
+python verify_installation.py
 ```
 
 ### Manual Setup
@@ -112,14 +113,29 @@ VERIFICATION SUMMARY
 Overall Result: 5/6 tests passed - TruLens integration is mostly functional.
 ```
 
-### 3. Run Comprehensive Test Suite
+### 3. Run Example Application
+
+```bash
+# 🆕 Run the PII-aware Capital Finder example
+python examples/capital_finder_presidio.py
+
+# This demonstrates:
+# - Microsoft Presidio PII protection
+# - Policy-based PII handling (REDACT, MASK, HASH, TOKENIZE)
+# - Session management with secure storage
+# - Multi-provider LLM support with fallbacks
+# - Production-grade error handling
+# - Async/await patterns for performance
+```
+
+### 4. Run Comprehensive Test Suite
 
 ```bash
 # Execute full CI/CD pipeline (includes TruLens evaluations)
 ./ci/run_tests.sh
 
-# 🆕 Run TruLens-specific tests
-python scripts/verify_trulens_setup.py
+# 🆕 Run verification tests
+python verify_installation.py
 
 # Run offline evaluation (requires API keys)
 python -m evaluation.offline_evaluation
@@ -600,7 +616,18 @@ python orchestration/app.py
 
 ## 📖 Further Reading
 
+### Core Documentation
+- **[🆕 Running PII Example Guide](docs/RUNNING_PII_EXAMPLE.md)** - Complete walkthrough of PII protection example
 - **[🆕 TruLens Integration Guide](docs/TRULENS_INTEGRATION.md)** - Complete TruLens integration documentation
+- **[PII Scaling Architecture](docs/PII_SCALING_ARCHITECTURE.md)** - Enterprise-scale PII protection design
+
+### Architecture Documents
+- [PromptForge Design Architecture](PROMPTFORGE_DESIGN_ARCHITECTURE.md) - Comprehensive system architecture
+- [Presidio Architecture Extension](PRESIDIO_ARCHITECTURE_EXTENSION.md) - Microsoft Presidio integration details
+- [Installation Guide](INSTALLATION.md) - Detailed setup instructions
+- [Scripts Documentation](SCRIPTS.md) - Setup and utility scripts reference
+
+### Additional Guides
 - [Prompt Engineering Best Practices](docs/prompt_engineering.md)
 - [Security Guardrails Guide](docs/security_guide.md)
 - [Financial Services Compliance](docs/compliance.md)
