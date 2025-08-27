@@ -59,12 +59,19 @@ passlib[bcrypt]>=1.7.4
 # =============================================================================
 # Observability and Monitoring
 # =============================================================================
+# OpenTelemetry Core
 opentelemetry-api>=1.36.0
 opentelemetry-sdk>=1.36.0
 opentelemetry-exporter-otlp>=1.36.0
+
+# OpenTelemetry Instrumentation (Critical: Required for tracing module)
+# These packages were identified as essential for observability/tracing.py
+# Without them, server startup fails with: ModuleNotFoundError: No module named 'opentelemetry.instrumentation'
 opentelemetry-instrumentation-requests>=0.46b0
 opentelemetry-instrumentation-fastapi>=0.46b0
 opentelemetry-instrumentation-httpx>=0.46b0
+
+# Structured logging
 structlog>=24.1.0
 
 # =============================================================================

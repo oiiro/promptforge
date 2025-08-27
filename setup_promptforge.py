@@ -118,7 +118,7 @@ class PromptForgeSetup:
             ("API Framework", ["fastapi>=0.110.0", "uvicorn>=0.29.0", "httpx>=0.27.0"]),
             ("Data Processing", ["pandas>=2.2.0", "numpy>=1.26.0"]),
             ("Security", ["cryptography>=42.0.0", "passlib[bcrypt]>=1.7.4", "jsonschema>=4.21.0"]),
-            ("Observability", ["opentelemetry-api>=1.36.0", "opentelemetry-sdk>=1.36.0", "structlog>=24.1.0"]),
+            ("Observability", ["opentelemetry-api>=1.36.0", "opentelemetry-sdk>=1.36.0", "opentelemetry-exporter-otlp>=1.36.0", "opentelemetry-instrumentation-requests>=0.46b0", "opentelemetry-instrumentation-fastapi>=0.46b0", "opentelemetry-instrumentation-httpx>=0.46b0", "structlog>=24.1.0"]),
             ("Testing", ["pytest>=8.2.0", "pytest-cov>=5.0.0"]),
             ("Development", ["black>=24.3.0", "flake8>=7.0.0", "mypy>=1.9.0"]),
             # Skip Advanced AI packages that may have build issues on Python 3.13
@@ -297,6 +297,28 @@ dependencies = {
     'spacy': 'spacy'
 }
 
+# Test OpenTelemetry specifically (since it was a common failure point)
+try:
+    from opentelemetry import trace
+    from opentelemetry.instrumentation.requests import RequestsInstrumentor
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+    results['opentelemetry_instrumentation'] = True
+    print("✅ OpenTelemetry instrumentation imports successful")
+except Exception as e:
+    results['opentelemetry_instrumentation'] = False
+    print(f"❌ OpenTelemetry instrumentation error: {e}")
+
+# Test observability/tracing module (our custom tracing module)
+try:
+    from observability.tracing import TracingManager
+    tracer = TracingManager()
+    results['tracing_manager'] = True
+    print("✅ TracingManager initialization successful")
+except Exception as e:
+    results['tracing_manager'] = False
+    print(f"❌ TracingManager error: {e}")
+
 for name, module in dependencies.items():
     try:
         __import__(module)
@@ -397,7 +419,9 @@ print(f"VERIFICATION_RESULTS: {results}")
             'Redis': verification_results.get('dep_redis', False),
             'Presidio Analyzer': verification_results.get('dep_presidio_analyzer', False),
             'Presidio Anonymizer': verification_results.get('dep_presidio_anonymizer', False),
-            'spaCy': verification_results.get('dep_spacy', False)
+            'spaCy': verification_results.get('dep_spacy', False),
+            'OpenTelemetry Instrumentation': verification_results.get('opentelemetry_instrumentation', False),
+            'Tracing Manager': verification_results.get('tracing_manager', False)
         }
         
         logger.info("\n📦 Dependencies:")
