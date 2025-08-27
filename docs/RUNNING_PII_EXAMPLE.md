@@ -125,8 +125,11 @@ nano .env
 # Activate virtual environment if not already active
 source venv/bin/activate
 
-# Run comprehensive verification
+# Option A: Official verification script
 python3 verify_installation.py
+
+# Option B: Comprehensive health check (includes additional system checks)
+python3 scripts/health_check.py
 
 # Expected output:
 # 🔍 PromptForge Installation Verification
@@ -312,9 +315,27 @@ The system uses configurable policies:
 
 ## 🧪 Step 7: Interactive Testing
 
+### Quick Start: Run All Tests
+For comprehensive testing, you can run all test scripts at once:
+
+```bash
+# Run the complete test suite
+python3 scripts/run_all_tests.py
+```
+
+This will execute all individual test scripts in sequence and provide a comprehensive report.
+
 ### Test Individual Components
 
 #### Test Basic LLM Client
+
+**Option A: Standalone Script (Recommended)**
+```bash
+# Run the dedicated test script
+python3 scripts/test_basic_llm.py
+```
+
+**Option B: Inline Command**
 ```bash
 python3 -c "
 import asyncio
@@ -332,6 +353,14 @@ asyncio.run(test_basic())
 ```
 
 #### Test PII Protection
+
+**Option A: Standalone Script (Recommended)**
+```bash
+# Run the dedicated PII protection test
+python3 scripts/test_pii_protection.py
+```
+
+**Option B: Inline Command**
 ```bash
 python3 -c "
 import asyncio
@@ -363,6 +392,14 @@ asyncio.run(test_pii())
 ```
 
 #### Test Service Class
+
+**Option A: Standalone Script (Recommended)**
+```bash
+# Run the dedicated service class test
+python3 scripts/test_service_class.py
+```
+
+**Option B: Inline Command**
 ```bash
 python3 -c "
 import asyncio
@@ -392,6 +429,14 @@ asyncio.run(test_service())
 ## 📊 Step 8: Advanced Usage
 
 ### Custom PII Policies
+
+**Option A: Standalone Script (Recommended)**
+```bash
+# Run the custom policy demonstration
+python3 scripts/test_custom_policy.py
+```
+
+**Option B: Inline Command**
 ```bash
 # Create custom PII policy test
 python3 -c "
@@ -435,6 +480,14 @@ asyncio.run(test_custom_policy())
 ```
 
 ### Performance Benchmarking
+
+**Option A: Standalone Script (Recommended)**
+```bash
+# Run the performance benchmark
+python3 scripts/performance_benchmark.py
+```
+
+**Option B: Inline Command**
 ```bash
 # Run performance benchmark
 python3 -c "
@@ -540,10 +593,24 @@ print(f'Memory: {psutil.virtual_memory().percent}%')
 ## 📚 Next Steps
 
 ### Explore Advanced Features
-1. **Custom PII Policies**: Modify `presidio/policies.py`
+1. **Custom PII Policies**: Modify `presidio/policies.py` or run `python3 scripts/test_custom_policy.py`
 2. **Enhanced Guardrails**: Extend `guardrails/validators.py`
 3. **Custom Providers**: Add new LLM providers to `orchestration/llm_client.py`
 4. **TruLens Evaluation**: Run `python3 -m evaluation.offline_evaluation`
+5. **Performance Analysis**: Use `python3 scripts/performance_benchmark.py` for optimization
+6. **System Health Monitoring**: Regular checks with `python3 scripts/health_check.py`
+
+### Available Test Scripts
+All standalone test scripts are located in the `scripts/` directory:
+- `test_basic_llm.py` - Basic LLM functionality
+- `test_pii_protection.py` - PII anonymization features  
+- `test_service_class.py` - Service-level integration
+- `test_custom_policy.py` - Custom policy demonstration
+- `performance_benchmark.py` - Performance analysis
+- `health_check.py` - System health verification
+- `run_all_tests.py` - Comprehensive test suite
+
+See `scripts/README.md` for detailed documentation on each script.
 
 ### Integration Testing
 ```bash
