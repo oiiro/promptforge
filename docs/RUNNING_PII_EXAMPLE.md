@@ -331,6 +331,20 @@ This will execute all individual test scripts in sequence and provide a comprehe
 
 ### Test Individual Components
 
+#### Test Presidio PII Protection Demo
+**NEW: Complete PII Anonymization/Deanonymization Demonstration**
+```bash
+# Run comprehensive Presidio demonstration with capital finder
+python3 scripts/test_presidio_capital_finder.py
+```
+
+This script demonstrates:
+- **PII Detection**: Automatically identifies names, emails, phone numbers
+- **Anonymization**: Replaces PII with safe placeholders before processing
+- **Processing**: Executes capital finder logic with anonymized data
+- **Deanonymization**: Restores original PII for user-friendly responses
+- **Multiple Test Cases**: Various PII scenarios and edge cases
+
 #### Test Basic LLM Client
 
 **Option A: Standalone Script (Recommended)**

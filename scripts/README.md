@@ -96,6 +96,17 @@ Curl-style API endpoint testing:
 python3 scripts/test_api_endpoints.py
 ```
 
+#### `test_presidio_capital_finder.py` 🛡️
+Demonstrates Presidio PII protection with capital finder:
+- PII detection in user queries
+- Anonymization and deanonymization flow
+- Multiple PII types (names, emails, phones)
+- Complete privacy protection workflow
+
+```bash
+python3 scripts/test_presidio_capital_finder.py
+```
+
 #### `run_all_tests.py` 🧪
 Comprehensive test suite runner:
 - Executes all test scripts in sequence

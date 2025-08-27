@@ -59,6 +59,7 @@ async def main():
         ('PII Protection', 'test_pii_protection.py'),
         ('Service Class', 'test_service_class.py'),
         ('Custom Policy', 'test_custom_policy.py'),
+        ('Presidio Capital Finder', 'test_presidio_capital_finder.py'),
         ('API Server', 'test_api_server.py'),
         ('API Endpoints', 'test_api_endpoints.py'),
         ('Performance Benchmark', 'performance_benchmark.py')

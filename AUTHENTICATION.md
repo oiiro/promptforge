@@ -43,6 +43,15 @@ curl -X POST http://localhost:8000/api/v1/capital \
   -d '{"country": "France"}'
 ```
 
+#### Capital Query with PII Protection (Presidio)
+```bash
+# Query with personal information - PII will be automatically detected and anonymized
+curl -X POST http://localhost:8000/api/v1/capital \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer demo-token" \
+  -d '{"country": "Hi, I'\''m John Smith and I want to know the capital of Japan"}'
+```
+
 **Response:**
 ```json
 {
@@ -208,6 +217,25 @@ For production deployments, consider implementing:
 - OAuth2 integration
 - API key management
 - Role-based access control (RBAC)
+
+### PII Protection with Presidio
+The PromptForge API includes built-in PII protection using Microsoft Presidio:
+- **Automatic Detection**: Identifies personal information in queries
+- **Anonymization**: Replaces PII with placeholders during processing
+- **Deanonymization**: Restores original context in responses
+- **Compliance**: Supports GDPR, CCPA, and other privacy regulations
+
+#### Presidio Testing Script
+```bash
+# Test PII anonymization and deanonymization
+python3 scripts/test_presidio_capital_finder.py
+```
+
+#### PII Protection Features
+- **Supported PII Types**: Names, emails, phone numbers, SSNs, credit cards
+- **Configurable Policies**: Custom anonymization rules per entity type
+- **Session Management**: Maintains anonymization mapping for request lifecycle
+- **Audit Trail**: Logs PII detection and handling for compliance
 
 ## API Documentation
 
