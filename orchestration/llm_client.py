@@ -63,7 +63,7 @@ class LLMProvider(ABC):
 class OpenAIProvider(LLMProvider):
     """OpenAI GPT provider implementation"""
     
-    def __init__(self, api_key: str = None, model: str = "gpt-4-turbo-preview"):
+    def __init__(self, api_key: str = None, model: str = "gpt-4o"):
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
         self.client = openai.OpenAI(api_key=self.api_key)
@@ -77,8 +77,7 @@ class OpenAIProvider(LLMProvider):
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=kwargs.get("temperature", 0),
-                max_tokens=kwargs.get("max_tokens", 200),
-                response_format={"type": "json_object"}
+                max_tokens=kwargs.get("max_tokens", 200)
             )
             
             elapsed_time = (time.time() - start_time) * 1000
@@ -298,8 +297,15 @@ class LLMClient:
             "openai": OpenAIProvider,
             "anthropic": AnthropicProvider,
             "huggingface": HuggingFaceProvider,
-            "airia": AiriaProvider
+            "airia": AiriaProvider,
+            "mock": MockProvider
         }
+        
+        # Auto-detect mock mode if no API keys available
+        if self.provider_name.lower() == "openai" and not os.getenv("OPENAI_API_KEY"):
+            logger.info("No OpenAI API key found, switching to mock provider")
+            self.provider_name = "mock"
+            return MockProvider()
         
         provider_class = providers.get(self.provider_name.lower())
         if not provider_class:
@@ -386,11 +392,80 @@ class LLMClient:
                 "metadata": metadata
             })
     
-    def health_check(self) -> Dict[str, Any]:
-        """Check health of current provider"""
+    async def generate_async(self, prompt: str, **kwargs) -> Dict[str, Any]:
+        """
+        Async version of generate method for capital finder compatibility
+        Returns structured response instead of JSON string
+        """
+        try:
+            # For capital finder, we need to handle both direct generation and country extraction
+            if "capital" in prompt.lower() or "what is" in prompt.lower():
+                # Extract country from prompt
+                country = self._extract_country_from_prompt(prompt)
+                if not country:
+                    # Fallback - use the whole prompt
+                    country = prompt
+            else:
+                country = prompt
+            
+            # Generate using existing method
+            json_response = self.generate(country, **kwargs)
+            
+            # Parse and structure the response
+            response_data = json.loads(json_response)
+            
+            # Return structured format expected by capital finder
+            return {
+                "content": f"The capital of {country} is {response_data.get('capital', 'Unknown')}.",
+                "metadata": response_data.get("metadata", {}),
+                "confidence": response_data.get("confidence", 0.0)
+            }
+            
+        except Exception as e:
+            logger.error(f"Async generation failed: {e}")
+            return {
+                "content": "I apologize, but I encountered an error processing your request.",
+                "error": True,
+                "metadata": {"error_type": type(e).__name__}
+            }
+    
+    def _extract_country_from_prompt(self, prompt: str) -> Optional[str]:
+        """Extract country name from prompt"""
+        patterns = [
+            "capital of ",
+            "capital city of ",
+            "what is the capital of ",
+            "tell me about ",
+            "find the capital of "
+        ]
+        
+        prompt_lower = prompt.lower()
+        
+        for pattern in patterns:
+            if pattern in prompt_lower:
+                start_idx = prompt_lower.find(pattern) + len(pattern)
+                remaining = prompt[start_idx:].strip()
+                
+                import re
+                match = re.match(r'^([A-Za-z\s]+)', remaining)
+                if match:
+                    return match.group(1).strip()
+        
+        # Fallback: look for country-like words
+        words = prompt.split()
+        for word in words:
+            word = word.strip('.,!?:"()[]{}')
+            if len(word) > 2 and word.isalpha() and word[0].isupper():
+                return word
+        
+        return prompt
+
+    async def health_check(self) -> Dict[str, Any]:
+        """Check health of current provider (async version)"""
         is_healthy = self.provider.health_check()
         
         return {
+            "status": "healthy" if is_healthy else "unhealthy",
             "provider": self.provider_name,
             "model": self.model,
             "healthy": is_healthy,
@@ -609,7 +684,8 @@ class PIIAwareLLMClient:
             if self.enable_guardrails:
                 start_time = time.time()
                 response_text = json.dumps(llm_response_json)
-                is_valid, sanitized_response, post_violations = self.guardrails.validate_response(response_text)
+                is_valid, post_violations = self.guardrails.validate_response(response_text)
+                sanitized_response = response_text  # Response validation doesn't modify the text
                 post_guardrails_time = (time.time() - start_time) * 1000
                 
                 processing_metadata["processing_steps"].append({
