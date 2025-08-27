@@ -82,12 +82,21 @@ class PresidioCapitalFinderDemo:
             operators=operators
         )
         
-        # Store the mapping for deanonymization - create a proper mapping
+        # Create a mapping based on the actual anonymized placeholders and original text
         anonymization_map = {}
-        for item in anonymized_result.items:
-            placeholder = item.operator
-            original_value = item.text
-            anonymization_map[placeholder] = original_value
+        
+        # Map placeholders to original values from PII results
+        for result in pii_results:
+            original_value = text[result.start:result.end]
+            entity_type = result.entity_type
+            
+            if entity_type in operators:
+                # Get the placeholder from the operator configuration
+                placeholder = operators[entity_type].params["new_value"]
+                anonymization_map[placeholder] = original_value
+            else:
+                # Use default for unknown types
+                anonymization_map["<REDACTED>"] = original_value
         
         print(f"🔒 Anonymized Text: '{anonymized_result.text}'")
         print(f"🗝️  Anonymization Map: {anonymization_map}")
@@ -178,8 +187,62 @@ class PresidioCapitalFinderDemo:
             }
         }
     
+    def mock_retirement_eligibility_query(self, query_text, anonymization_map):
+        """Mock retirement account eligibility service with PII-aware response."""
+        # This service would typically process the anonymized query
+        # and return a response that can be deanonymized
+        
+        # Extract key information from query (simplified)
+        amount = "5000"  # Could extract from query: "$5,000"
+        
+        # Create response template with placeholders that match anonymization
+        response_template = (
+            "Hello <PERSON>, based on your request you are eligible to open a "
+            "retirement account with a ${amount} deposit. "
+            "We will contact you via <EMAIL> to proceed with the application. "
+            "Your identifier <SSN> will be used to validate your identity during the process."
+        )
+        
+        # Replace amount
+        response_text = response_template.replace("{amount}", amount)
+        
+        # Add SSN to anonymization map if not detected by Presidio
+        # Manual SSN detection for demonstration purposes
+        import re
+        original_query = query_text.replace('<PERSON>', anonymization_map.get('<PERSON>', 'Person')).replace('<EMAIL>', anonymization_map.get('<EMAIL>', 'email'))
+        
+        ssn_pattern = r'\b\d{3}-\d{2}-\d{4}\b'
+        ssn_match = re.search(ssn_pattern, original_query)
+        if ssn_match and '<SSN>' not in anonymization_map:
+            # Add SSN to the anonymization map for proper deanonymization
+            updated_map = anonymization_map.copy()
+            updated_map['<SSN>'] = ssn_match.group()
+            self.anonymization_map.update(updated_map)
+        
+        return {
+            "response": response_text,
+            "eligible": True,
+            "deposit_amount": amount,
+            "metadata": {
+                "source": "retirement_eligibility_service",
+                "model": "mock-financial-demo",
+                "pii_protection": "enabled",
+                "requires_deanonymization": True
+            }
+        }
+    
     async def demonstrate_pii_flow(self, user_query):
         """Demonstrate complete PII protection flow."""
+        # Determine query type
+        is_retirement_query = "retirement" in user_query.lower() or "account" in user_query.lower()
+        
+        if is_retirement_query:
+            return await self.demonstrate_retirement_pii_flow(user_query)
+        else:
+            return await self.demonstrate_capital_pii_flow(user_query)
+    
+    async def demonstrate_capital_pii_flow(self, user_query):
+        """Demonstrate PII protection flow for capital finder queries."""
         print(f"\n🌍 Capital Finder with Presidio PII Protection")
         print("=" * 60)
         print(f"📝 Original Query: '{user_query}'")
@@ -191,7 +254,6 @@ class PresidioCapitalFinderDemo:
         anonymized_query, anonymization_map = self.anonymize_text(user_query, pii_results)
         
         # Step 3: Extract country from original or anonymized query
-        # First try to find known countries in the original query
         country = self.extract_country_from_query(user_query, pii_results)
         
         if not country:
@@ -239,6 +301,50 @@ class PresidioCapitalFinderDemo:
         
         print(f"\n✅ Final Response: {json.dumps(final_result, indent=2)}")
         return final_result
+    
+    async def demonstrate_retirement_pii_flow(self, user_query):
+        """Demonstrate PII protection flow for retirement account queries."""
+        print(f"\n🏦 Retirement Account Eligibility with Presidio PII Protection")
+        print("=" * 70)
+        print(f"📝 Original Query: '{user_query}'")
+        
+        # Step 1: Analyze for PII
+        pii_results = self.analyze_pii(user_query)
+        
+        # Step 2: Anonymize if PII found
+        anonymized_query, anonymization_map = self.anonymize_text(user_query, pii_results)
+        
+        print(f"🔍 Anonymized Query for Processing: '{anonymized_query}'")
+        
+        # Step 3: Process with retirement eligibility service
+        print(f"\n⚙️  Processing anonymized query with retirement eligibility service...")
+        result = self.mock_retirement_eligibility_query(user_query, anonymization_map)
+        
+        print(f"🏦 Service Response (with placeholders): '{result['response']}'")
+        
+        # Step 4: Deanonymize response to restore original PII
+        # Include any additional mappings from the service (like SSN)
+        enhanced_map = anonymization_map.copy()
+        enhanced_map.update(self.anonymization_map)
+        
+        final_response = self.deanonymize_text(result['response'], enhanced_map)
+        
+        # Step 5: Return structured result
+        final_result = {
+            "response": final_response,
+            "eligible": result["eligible"],
+            "deposit_amount": result["deposit_amount"],
+            "pii_detected": len(pii_results) > 0,
+            "pii_entities": [r.entity_type for r in pii_results],
+            "metadata": {
+                **result["metadata"],
+                "anonymization_applied": len(anonymization_map) > 0,
+                "anonymized_entities": list(anonymization_map.keys()) if anonymization_map else []
+            }
+        }
+        
+        print(f"\n✅ Final Response: {json.dumps(final_result, indent=2)}")
+        return final_result
 
 async def main():
     """Run Presidio capital finder demonstrations."""
@@ -271,7 +377,10 @@ async def main():
         "John Smith (john@example.com, 555-0123) asks: what's Spain's capital?",
         
         # Complex query with location PII
-        "I'm traveling from New York to find out about the UK's capital"
+        "I'm traveling from New York to find out about the UK's capital",
+        
+        # Retirement account eligibility query with comprehensive PII
+        "Hi, my name is John Doe. My Social Security Number is 123-45-6789 and my email is john.doe@example.com. Can you please tell me if I'm eligible to open a new retirement account with a $5,000 deposit?"
     ]
     
     for i, query in enumerate(test_cases, 1):
