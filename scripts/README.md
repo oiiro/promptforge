@@ -85,6 +85,17 @@ Tests the FastAPI orchestration server:
 python3 scripts/test_api_server.py
 ```
 
+#### `test_api_endpoints.py` 🌐
+Curl-style API endpoint testing:
+- Authentication flow testing
+- Multiple endpoint coverage
+- Error handling validation
+- Real HTTP request examples
+
+```bash
+python3 scripts/test_api_endpoints.py
+```
+
 #### `run_all_tests.py` 🧪
 Comprehensive test suite runner:
 - Executes all test scripts in sequence

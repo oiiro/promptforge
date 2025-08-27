@@ -617,14 +617,74 @@ All standalone test scripts are located in the `scripts/` directory:
 See `scripts/README.md` for detailed documentation on each script.
 
 ### Integration Testing
-```bash
-# Start the API server
-python3 orchestration/app.py
 
-# Test API endpoints
+#### Start the API Server
+```bash
+# Using virtual environment
+./venv/bin/python3 orchestration/app.py
+
+# Or without virtual environment
+python3 orchestration/app.py
+```
+
+#### Test API Endpoints
+
+**✅ Authenticated Request (Required):**
+```bash
+curl -X POST http://localhost:8000/api/v1/capital \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer demo-token" \
+  -d '{"country": "France"}'
+```
+
+**Expected Response:**
+```json
+{
+  "capital": "Paris",
+  "confidence": 1.0,
+  "metadata": {
+    "source": "geographical_database",
+    "timestamp": "2025-08-27T20:27:52.919918",
+    "model": "mock-model",
+    "latency_ms": 50,
+    "token_usage": {"prompt": 228, "completion": 5, "total": 233}
+  }
+}
+```
+
+**❌ Missing Authentication (Returns Error):**
+```bash
 curl -X POST http://localhost:8000/api/v1/capital \
   -H "Content-Type: application/json" \
   -d '{"country": "France"}'
+```
+
+**Error Response:**
+```json
+{"detail": "Not authenticated"}
+```
+
+#### Test Other Endpoints
+
+**Health Check (No Auth Required):**
+```bash
+curl http://localhost:8000/health
+```
+
+**API Documentation (No Auth Required):**
+```bash
+open http://localhost:8000/docs
+```
+
+**Metrics (Auth Required):**
+```bash
+curl -H "Authorization: Bearer demo-token" http://localhost:8000/api/v1/metrics
+```
+
+#### API Server Test Script
+```bash
+# Run comprehensive API server tests
+python3 scripts/test_api_server.py
 ```
 
 ### Production Deployment
