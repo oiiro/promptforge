@@ -58,10 +58,13 @@ class PresidioCapitalFinderDemo:
         
         return results
     
-    def anonymize_text(self, text, pii_results):
+    def anonymize_text(self, text, pii_results, use_numbered_placeholders=False):
         """Anonymize PII in text and store mapping."""
         if not pii_results:
             return text, {}
+        
+        if use_numbered_placeholders:
+            return self._anonymize_with_numbered_placeholders(text, pii_results)
         
         # Configure anonymization operators
         operators = {
@@ -102,6 +105,117 @@ class PresidioCapitalFinderDemo:
         print(f"🗝️  Anonymization Map: {anonymization_map}")
         
         return anonymized_result.text, anonymization_map
+    
+    def _anonymize_with_numbered_placeholders(self, text, pii_results):
+        """Anonymize PII with numbered placeholders for multi-entity scenarios."""
+        # Filter out overlapping entities (prioritize longer matches and higher confidence)
+        filtered_results = self._filter_overlapping_entities(pii_results)
+        
+        # Sort filtered results by start position to process in order
+        sorted_results = sorted(filtered_results, key=lambda x: x.start)
+        
+        # Count occurrences of each entity type for numbering
+        entity_counters = {}
+        anonymization_map = {}
+        
+        # Process entities and create numbered placeholders
+        anonymized_text = text
+        offset = 0  # Track offset due to replacements
+        
+        for result in sorted_results:
+            entity_type = result.entity_type
+            original_value = text[result.start:result.end]
+            
+            # Generate numbered placeholder
+            if entity_type not in entity_counters:
+                entity_counters[entity_type] = 1
+            else:
+                entity_counters[entity_type] += 1
+            
+            counter = entity_counters[entity_type]
+            
+            # Create numbered placeholder based on entity type
+            if entity_type == "PERSON":
+                placeholder = f"<NAME_{counter}>"
+            elif entity_type == "EMAIL_ADDRESS":
+                placeholder = f"<EMAIL_ADDRESS_{counter}>"
+            elif entity_type == "DATE_TIME":
+                placeholder = f"<DATE_{counter}>"
+            elif entity_type == "PHONE_NUMBER":
+                placeholder = f"<PHONE_{counter}>"
+            elif entity_type == "US_SSN":
+                placeholder = f"<SSN_{counter}>"
+            elif entity_type == "LOCATION":
+                placeholder = f"<LOCATION_{counter}>"
+            else:
+                placeholder = f"<{entity_type}_{counter}>"
+            
+            # Store mapping
+            anonymization_map[placeholder] = original_value
+            
+            # Replace in text (adjusting for previous replacements)
+            start_pos = result.start + offset
+            end_pos = result.end + offset
+            
+            anonymized_text = anonymized_text[:start_pos] + placeholder + anonymized_text[end_pos:]
+            offset += len(placeholder) - (result.end - result.start)
+        
+        print(f"🔒 Anonymized Text: '{anonymized_text}'")
+        print(f"🗝️  Anonymization Map: {anonymization_map}")
+        
+        return anonymized_text, anonymization_map
+    
+    def _filter_overlapping_entities(self, pii_results):
+        """Filter out overlapping PII entities, prioritizing longer matches and higher confidence."""
+        if not pii_results:
+            return pii_results
+        
+        # Sort by confidence (descending) and length (descending)
+        sorted_by_priority = sorted(pii_results, key=lambda x: (
+            getattr(x, 'score', getattr(x, 'confidence', 0.0)),
+            x.end - x.start
+        ), reverse=True)
+        
+        filtered_results = []
+        
+        for result in sorted_by_priority:
+            # Check if this result overlaps with any already accepted result
+            overlaps = False
+            for accepted_result in filtered_results:
+                if self._entities_overlap(result, accepted_result):
+                    overlaps = True
+                    break
+            
+            # Only add non-overlapping results or prioritize certain entity types
+            if not overlaps or self._should_prioritize_entity(result, filtered_results):
+                # If prioritizing this entity, remove conflicting ones
+                if overlaps and self._should_prioritize_entity(result, filtered_results):
+                    filtered_results = [r for r in filtered_results if not self._entities_overlap(result, r)]
+                
+                if not overlaps:
+                    filtered_results.append(result)
+        
+        return filtered_results
+    
+    def _entities_overlap(self, entity1, entity2):
+        """Check if two PII entities overlap in text position."""
+        return not (entity1.end <= entity2.start or entity2.end <= entity1.start)
+    
+    def _should_prioritize_entity(self, new_entity, existing_entities):
+        """Determine if new entity should be prioritized over existing overlapping ones."""
+        # Prioritize EMAIL_ADDRESS over URL when they overlap
+        if new_entity.entity_type == "EMAIL_ADDRESS":
+            for existing in existing_entities:
+                if existing.entity_type == "URL" and self._entities_overlap(new_entity, existing):
+                    return True
+        
+        # Prioritize PERSON over other entity types when they overlap
+        if new_entity.entity_type == "PERSON":
+            for existing in existing_entities:
+                if existing.entity_type in ["URL", "LOCATION"] and self._entities_overlap(new_entity, existing):
+                    return True
+        
+        return False
     
     def deanonymize_text(self, anonymized_text, anonymization_map):
         """Restore original PII in text."""
@@ -231,12 +345,48 @@ class PresidioCapitalFinderDemo:
             }
         }
     
+    def mock_multi_person_retirement_eligibility_query(self, query_text, anonymization_map):
+        """Mock multi-person retirement account eligibility service with numbered placeholders."""
+        # This service would typically process the anonymized query 
+        # and return a response that can be deanonymized with numbered placeholders
+        
+        # Extract key information from query (simplified)
+        amount = "10,000"  # Could extract from query: "$10,000"
+        
+        # Create response template with numbered placeholders that match anonymization
+        response_template = (
+            "Here is the eligibility confirmation:\n\n"
+            "1. <NAME_1> (born in <DATE_1>) with email <EMAIL_ADDRESS_1> is eligible for an account with a ${amount} deposit.\n"
+            "2. <NAME_2> (born in <DATE_2>) with email <EMAIL_ADDRESS_2> is eligible for an account with a ${amount} deposit.\n"
+            "3. <NAME_3> (born in <DATE_3>) with email <EMAIL_ADDRESS_3> is eligible for an account with a ${amount} deposit."
+        )
+        
+        # Replace amount
+        response_text = response_template.replace("{amount}", amount)
+        
+        return {
+            "response": response_text,
+            "eligible": True,
+            "deposit_amount": amount,
+            "persons_processed": 3,
+            "metadata": {
+                "source": "multi_person_retirement_eligibility_service",
+                "model": "mock-financial-multi-person-demo",
+                "pii_protection": "enabled",
+                "requires_deanonymization": True,
+                "multi_entity_support": True
+            }
+        }
+    
     async def demonstrate_pii_flow(self, user_query):
         """Demonstrate complete PII protection flow."""
         # Determine query type
         is_retirement_query = "retirement" in user_query.lower() or "account" in user_query.lower()
+        is_multi_person_query = "three people" in user_query.lower() or "Alice Johnson" in user_query
         
-        if is_retirement_query:
+        if is_multi_person_query:
+            return await self.demonstrate_multi_person_pii_flow(user_query)
+        elif is_retirement_query:
             return await self.demonstrate_retirement_pii_flow(user_query)
         else:
             return await self.demonstrate_capital_pii_flow(user_query)
@@ -345,6 +495,49 @@ class PresidioCapitalFinderDemo:
         
         print(f"\n✅ Final Response: {json.dumps(final_result, indent=2)}")
         return final_result
+    
+    async def demonstrate_multi_person_pii_flow(self, user_query):
+        """Demonstrate PII protection flow for multi-person retirement account queries."""
+        print(f"\n👥 Multi-Person Retirement Account Eligibility with Presidio PII Protection")
+        print("=" * 80)
+        print(f"📝 Original Query: '{user_query}'")
+        
+        # Step 1: Analyze for PII
+        pii_results = self.analyze_pii(user_query)
+        
+        # Step 2: Anonymize with numbered placeholders for multi-entity support
+        anonymized_query, anonymization_map = self.anonymize_text(user_query, pii_results, use_numbered_placeholders=True)
+        
+        print(f"🔍 Anonymized Query for Processing: '{anonymized_query}'")
+        
+        # Step 3: Process with multi-person retirement eligibility service
+        print(f"\n⚙️  Processing anonymized query with multi-person retirement eligibility service...")
+        result = self.mock_multi_person_retirement_eligibility_query(anonymized_query, anonymization_map)
+        
+        print(f"🏦 Service Response (with numbered placeholders):")
+        print(f"'{result['response']}'")
+        
+        # Step 4: Deanonymize response to restore original PII
+        final_response = self.deanonymize_text(result['response'], anonymization_map)
+        
+        # Step 5: Return structured result
+        final_result = {
+            "response": final_response,
+            "eligible": result["eligible"],
+            "deposit_amount": result["deposit_amount"],
+            "persons_processed": result["persons_processed"],
+            "pii_detected": len(pii_results) > 0,
+            "pii_entities": [r.entity_type for r in pii_results],
+            "metadata": {
+                **result["metadata"],
+                "anonymization_applied": len(anonymization_map) > 0,
+                "anonymized_entities": list(anonymization_map.keys()) if anonymization_map else [],
+                "numbered_placeholders_used": True
+            }
+        }
+        
+        print(f"\n✅ Final Response: {json.dumps(final_result, indent=2)}")
+        return final_result
 
 async def main():
     """Run Presidio capital finder demonstrations."""
@@ -380,7 +573,10 @@ async def main():
         "I'm traveling from New York to find out about the UK's capital",
         
         # Retirement account eligibility query with comprehensive PII
-        "Hi, my name is John Doe. My Social Security Number is 123-45-6789 and my email is john.doe@example.com. Can you please tell me if I'm eligible to open a new retirement account with a $5,000 deposit?"
+        "Hi, my name is John Doe. My Social Security Number is 123-45-6789 and my email is john.doe@example.com. Can you please tell me if I'm eligible to open a new retirement account with a $5,000 deposit?",
+        
+        # Multi-person retirement account eligibility query with numbered placeholders
+        "We have three people requesting retirement account eligibility checks: 1. Alice Johnson, born in 1985, email alice.j@example.com 2. Bob Smith, born in 1978, email bob.smith78@gmail.com 3. Carol White, born in 1990, email carol.white90@outlook.com Please confirm for each of them if they are eligible to open an account with a $10,000 deposit."
     ]
     
     for i, query in enumerate(test_cases, 1):
