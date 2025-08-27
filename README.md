@@ -221,6 +221,32 @@ curl -X POST http://localhost:8000/api/v1/capital \
 #     "timestamp": "2024-08-27T10:00:00Z"
 #   }
 # }
+
+# 🆕 Multi-Person Retirement Eligibility (with PII Protection)
+curl -X POST http://localhost:8000/api/v1/retirement-eligibility \
+  -H "Authorization: Bearer demo-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Please evaluate retirement eligibility for John Smith, age 65, phone 555-123-4567, with 25 years of employment and current salary of $75,000. Also check Sarah Johnson, age 62, email sarah.johnson@company.com, with 30 years of employment.",
+    "enable_pii_protection": true,
+    "enable_monitoring": true
+  }'
+
+# Expected response:
+# {
+#   "response": "Eligibility confirmation with anonymized PII...",
+#   "eligible": true,
+#   "deposit_amount": "10,000",
+#   "persons_processed": 2,
+#   "pii_detected": true,
+#   "pii_entities": ["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER"],
+#   "anonymization_applied": true,
+#   "metadata": {
+#     "pii_protection": "enabled",
+#     "numbered_placeholders_used": true,
+#     "anonymized_entities": ["<NAME_1>", "<EMAIL_ADDRESS_1>", "<PHONE_NUMBER_1>"]
+#   }
+# }
 ```
 
 ## 🔒 Security Features

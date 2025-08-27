@@ -9,11 +9,13 @@ The PromptForge API server requires Bearer token authentication for all protecte
 ### Protected Endpoints
 The following endpoints require authentication:
 - `/api/v1/capital` - Capital finder service
+- `/api/v1/retirement-eligibility` - Multi-person retirement eligibility with PII protection
 - `/api/v1/evaluate` - Prompt evaluation
 - `/api/v1/metrics` - System metrics
 - `/api/v1/audit-log` - Audit log access
 - `/api/v1/rollback` - Version rollback
 - `/api/v1/feature-flags` - Feature flag management
+- `/api/v1/trulens/dashboard` - TruLens monitoring dashboard
 
 ### Public Endpoints
 The following endpoints do NOT require authentication:
@@ -63,6 +65,39 @@ curl -X POST http://localhost:8000/api/v1/capital \
     "model": "mock-model",
     "latency_ms": 50,
     "token_usage": {"prompt": 228, "completion": 5, "total": 233}
+  }
+}
+```
+
+#### Multi-Person Retirement Eligibility with PII Protection
+```bash
+curl -X POST http://localhost:8000/api/v1/retirement-eligibility \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer demo-token" \
+  -d '{
+    "query": "Evaluate retirement eligibility for John Smith, age 65, phone 555-123-4567, employed for 25 years with salary $75,000. Also Sarah Johnson, age 62, email sarah.johnson@company.com, employed for 30 years.",
+    "enable_pii_protection": true,
+    "enable_monitoring": true
+  }'
+```
+
+**Response with PII Protection:**
+```json
+{
+  "response": "Retirement eligibility confirmation with PII anonymized...",
+  "eligible": true,
+  "deposit_amount": "10,000",
+  "persons_processed": 2,
+  "pii_detected": true,
+  "pii_entities": ["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER"],
+  "anonymization_applied": true,
+  "metadata": {
+    "pii_protection": "enabled",
+    "numbered_placeholders_used": true,
+    "anonymized_entities": ["<NAME_1>", "<EMAIL_ADDRESS_1>", "<PHONE_NUMBER_1>"],
+    "request_id": "uuid-here",
+    "processing_time_ms": 150,
+    "trulens_monitoring": true
   }
 }
 ```
