@@ -30,6 +30,11 @@ from llm_client import LLMClient
 from guardrails.validators import GuardrailOrchestrator
 from observability.tracing import TracingManager
 from observability.metrics import MetricsCollector
+from retirement_endpoints_enhanced import (
+    setup_retirement_endpoints,
+    RetirementEligibilityRequest,
+    RetirementEligibilityResponse
+)
 
 # Configure logging first
 logging.basicConfig(level=logging.INFO)
@@ -112,30 +117,7 @@ class VersionInfo(BaseModel):
     model_version: str
     deployed_at: str
 
-class RetirementEligibilityRequest(BaseModel):
-    """Request model for multi-person retirement eligibility with PII protection"""
-    query: str = Field(..., min_length=10, max_length=5000, description="Multi-person eligibility query")
-    enable_pii_protection: bool = Field(True, description="Enable Presidio PII anonymization")
-    enable_monitoring: bool = Field(True, description="Enable TruLens monitoring")
-    
-    @field_validator('query')
-    @classmethod
-    def validate_query(cls, v):
-        """Validate query input"""
-        if not v or len(v.strip()) == 0:
-            raise ValueError("Query cannot be empty")
-        return v.strip()
-
-class RetirementEligibilityResponse(BaseModel):
-    """Response model for multi-person retirement eligibility"""
-    response: str
-    eligible: bool
-    deposit_amount: str
-    persons_processed: Optional[int] = None
-    pii_detected: bool
-    pii_entities: List[str]
-    anonymization_applied: bool
-    metadata: Dict[str, Any]
+# RetirementEligibilityRequest and RetirementEligibilityResponse now imported from retirement_endpoints
 
 # Application lifecycle
 @asynccontextmanager
@@ -159,47 +141,37 @@ async def lifespan(app: FastAPI):
         app.state.analyzer = None
         app.state.anonymizer = None
     
-    # Initialize TruLens monitoring
+    # Initialize TruLens monitoring (simplified - no legacy app creation)
     if TRULENS_AVAILABLE:
         try:
             # Use configured database URL from environment
             database_url = os.getenv("TRULENS_DATABASE_URL", "sqlite:///default.sqlite")
             logger.info(f"Initializing TruLens with database: {database_url}")
             app.state.tru_session = TruSession(database_url=database_url)
-            # Comment out reset_database() as it can hang during startup
-            # app.state.tru_session.reset_database()  # Start fresh for demo
-            
-            # Register the app with TruLens to ensure proper record retrieval
-            app.state.tru_app_id = "promptforge"
-            
-            # Create TruVirtual app wrapper for TruLens
-            from trulens.apps.virtual import TruVirtual
-            virtual_app = {
-                "llm": {"provider": "openai", "model": "gpt-4"},
-                "type": "promptforge",
-                "description": "PromptForge PII-protected multi-person processing system"
-            }
-            
-            app.state.tru_app = TruVirtual(
-                app_name=app.state.tru_app_id,
-                app_id=app.state.tru_app_id,
-                app_version="1.0.0",
-                app=virtual_app
-            )
-            
-            # Register the app in TruLens session
-            app.state.tru_session.add_app(app=app.state.tru_app)
-            logger.info(f"TruLens app '{app.state.tru_app_id}' registered successfully")
             
             # Create feedback functions for PII monitoring
             app.state.pii_detection_feedback = create_pii_detection_feedback()
             app.state.anonymization_quality_feedback = create_anonymization_quality_feedback()
-            logger.info("TruLens monitoring initialized")
+            logger.info("✅ TruLens monitoring initialized (no legacy app creation)")
         except Exception as e:
             logger.warning(f"Failed to initialize TruLens: {e}")
             app.state.tru_session = None
     else:
         app.state.tru_session = None
+    
+    # Initialize enhanced retirement eligibility apps with comprehensive TruLens feedback
+    logger.info("Initializing enhanced retirement eligibility endpoints...")
+    
+    # Setup endpoints with comprehensive feedback functions
+    app.state.tru_mock_app, app.state.tru_live_app = setup_retirement_endpoints(
+        app, 
+        app.state.llm_client, 
+        verify_token
+    )
+    if app.state.tru_mock_app and app.state.tru_live_app:
+        logger.info("✅ Enhanced retirement endpoints initialized with comprehensive TruLens feedback")
+    else:
+        logger.warning("❌ Failed to initialize enhanced retirement endpoints")
     
     # Load version info
     app.state.version = VersionInfo(
@@ -690,220 +662,8 @@ async def find_capital(
             detail=f"Internal server error: {str(e)}"
         )
 
-@app.post("/api/v1/retirement-eligibility", response_model=RetirementEligibilityResponse)
-async def check_multi_person_retirement_eligibility(
-    request: RetirementEligibilityRequest,
-    background_tasks: BackgroundTasks,
-    req: Request,
-    token: str = Depends(verify_token)
-):
-    """
-    Multi-person retirement eligibility check with Presidio PII protection and TruLens monitoring
-    """
-    start_time = time.time()
-    request_id = req.state.request_id
-    
-    # Initialize tracking variables
-    span = None
-    tru_record = None
-    
-    try:
-        logger.info(f"Processing multi-person retirement eligibility request {request_id}")
-        
-        # Start TruLens monitoring if enabled
-        if TRULENS_AVAILABLE and request.enable_monitoring and app.state.tru_session:
-            try:
-                # Create a simple app wrapper for monitoring
-                class RetirementEligibilityApp:
-                    def __init__(self, presidio_manager):
-                        self.presidio = presidio_manager
-                    
-                    def process_query(self, query: str) -> Dict[str, Any]:
-                        # Analyze PII
-                        pii_results = self.presidio.analyze_pii(query)
-                        
-                        # Anonymize
-                        anonymized_query, anonymization_map = self.presidio.anonymize_with_numbered_placeholders(
-                            query, pii_results
-                        )
-                        
-                        # Process with mock service
-                        result = self.presidio.mock_multi_person_retirement_eligibility(
-                            anonymized_query, anonymization_map
-                        )
-                        
-                        # Deanonymize
-                        final_response = self.presidio.deanonymize_text(result['response'], anonymization_map)
-                        
-                        return {
-                            "original_query": query,
-                            "anonymized_query": anonymized_query,
-                            "pii_detected": len(pii_results) > 0,
-                            "pii_entities": [r.entity_type for r in pii_results],
-                            "anonymization_map": anonymization_map,
-                            "service_response": result['response'],
-                            "final_response": final_response,
-                            "metadata": result['metadata']
-                        }
-                
-                # Wrap the app with TruLens
-                if PRESIDIO_AVAILABLE:
-                    presidio_manager = PresidioManager(
-                        app.state.analyzer, 
-                        app.state.anonymizer
-                    )
-                    retirement_app = RetirementEligibilityApp(presidio_manager)
-                    
-                    # Process query and record with TruLens
-                    monitoring_result = retirement_app.process_query(request.query)
-                    
-                    # Simplified TruLens recording
-                    if app.state.tru_session:
-                        try:
-                            # Import Cost class from TruLens
-                            from trulens.core.schema.base import Cost
-                            
-                            # Use TruLens session to record the interaction
-                            app_record = app.state.tru_session.add_record(
-                                app_id=app.state.tru_app_id,
-                                input=request.query,
-                                output=monitoring_result.get("final_response", ""),
-                                cost=Cost(n_tokens=0, n_prompt_tokens=0, n_completion_tokens=0),  # Use Cost object
-                                latency=round((time.time() - start_time) * 1000, 2),
-                                calls=[],  # Provide empty list for calls
-                                metadata={
-                                    "request_id": request_id,
-                                    "pii_detected": monitoring_result.get("pii_detected", False),
-                                    "entities_count": len(monitoring_result.get("pii_entities", [])),
-                                    "endpoint": "/api/v1/retirement-eligibility",
-                                    "pii_entities": monitoring_result.get("pii_entities", []),
-                                    "anonymization_applied": monitoring_result.get("anonymization_map") is not None
-                                }
-                            )
-                            
-                            tru_record = app_record
-                            logger.info(f"TruLens record successfully added for request {request_id}")
-                            
-                            # Run feedback functions if available
-                            if app.state.pii_detection_feedback:
-                                try:
-                                    pii_score = app.state.pii_detection_feedback(request.query)
-                                    logger.info(f"PII Detection feedback score: {pii_score}")
-                                except Exception as feedback_error:
-                                    logger.warning(f"PII Detection feedback failed: {feedback_error}")
-                            
-                            if app.state.anonymization_quality_feedback:
-                                try:
-                                    anon_score = app.state.anonymization_quality_feedback(
-                                        request.query,
-                                        monitoring_result.get("anonymized_query", "")
-                                    )
-                                    logger.info(f"Anonymization Quality feedback score: {anon_score}")
-                                except Exception as feedback_error:
-                                    logger.warning(f"Anonymization Quality feedback failed: {feedback_error}")
-                                    
-                        except Exception as record_error:
-                            logger.warning(f"TruLens recording failed: {record_error}")
-                            tru_record = None
-                    logger.info(f"TruLens monitoring captured for request {request_id}")
-                
-            except Exception as e:
-                logger.warning(f"TruLens monitoring failed: {e}")
-        
-        # Process request with or without TruLens
-        if not PRESIDIO_AVAILABLE or not request.enable_pii_protection:
-            # Simple processing without PII protection
-            result = {
-                "response": "PII protection not available or disabled",
-                "eligible": False,
-                "deposit_amount": "0",
-                "persons_processed": 0,
-                "pii_detected": False,
-                "pii_entities": [],
-                "anonymization_applied": False,
-                "metadata": {
-                    "pii_protection": "disabled",
-                    "source": "retirement_eligibility_service"
-                }
-            }
-        else:
-            # Full PII protection processing
-            presidio_manager = PresidioManager(
-                app.state.analyzer, 
-                app.state.anonymizer
-            )
-            
-            # Step 1: Analyze PII
-            pii_results = presidio_manager.analyze_pii(request.query)
-            logger.info(f"PII analysis found {len(pii_results)} entities")
-            
-            # Step 2: Anonymize with numbered placeholders
-            anonymized_query, anonymization_map = presidio_manager.anonymize_with_numbered_placeholders(
-                request.query, pii_results
-            )
-            
-            # Step 3: Process with mock retirement eligibility service
-            service_result = presidio_manager.mock_multi_person_retirement_eligibility(
-                anonymized_query, anonymization_map
-            )
-            
-            # Step 4: Deanonymize response
-            final_response = presidio_manager.deanonymize_text(
-                service_result['response'], anonymization_map
-            )
-            
-            # Step 5: Prepare final result
-            result = {
-                "response": final_response,
-                "eligible": service_result["eligible"],
-                "deposit_amount": service_result["deposit_amount"],
-                "persons_processed": service_result["persons_processed"],
-                "pii_detected": len(pii_results) > 0,
-                "pii_entities": [r.entity_type for r in pii_results],
-                "anonymization_applied": len(anonymization_map) > 0,
-                "metadata": {
-                    **service_result["metadata"],
-                    "anonymized_entities": list(anonymization_map.keys()) if anonymization_map else [],
-                    "request_id": request_id,
-                    "processing_time_ms": (time.time() - start_time) * 1000,
-                    "trulens_monitoring": tru_record is not None
-                }
-            }
-        
-        # Record metrics
-        elapsed_time = (time.time() - start_time) * 1000
-        if app.state.metrics:
-            app.state.metrics.record("retirement_eligibility_request_latency", elapsed_time)
-            app.state.metrics.increment("successful_retirement_eligibility_requests")
-            
-            if result["pii_detected"]:
-                app.state.metrics.increment("pii_protected_requests")
-        
-        # Background audit logging
-        background_tasks.add_task(
-            audit_retirement_eligibility_log,
-            request_id,
-            request.query,
-            result,
-            elapsed_time,
-            tru_record
-        )
-        
-        logger.info(f"Multi-person retirement eligibility request {request_id} completed successfully")
-        return RetirementEligibilityResponse(**result)
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Multi-person retirement eligibility request {request_id} failed: {e}")
-        
-        if app.state.metrics:
-            app.state.metrics.increment("failed_retirement_eligibility_requests")
-        
-        raise HTTPException(
-            status_code=500,
-            detail=f"Internal server error: {str(e)}"
-        )
+# Retirement eligibility endpoints are now handled in retirement_endpoints_enhanced.py
+# They are registered via setup_retirement_endpoints() during app initialization
 
 @app.post("/api/v1/evaluate")
 async def evaluate_prompt(
@@ -1063,17 +823,46 @@ async def get_trulens_dashboard(token: str = Depends(verify_token)):
         # Try multiple approaches to get records safely
         records_df = None
         
-        # Method 1: Try with app_name (new TruLens API)
-        try:
-            result = app.state.tru_session.get_records_and_feedback(app_name=app.state.tru_app_id)
-            if isinstance(result, tuple):
-                records_df, feedback_columns = result
-                logger.info(f"Successfully retrieved records using app_name filter: {len(records_df)} records, {len(feedback_columns)} feedback columns")
-            else:
-                records_df = result
-                logger.info(f"Successfully retrieved records using app_name filter (non-tuple)")
-        except Exception as e1:
-            logger.warning(f"Failed to get records with app_name filter: {e1}")
+        # Method 1: Get records from retirement apps (MockPromptForge and PromptForge)
+        if app.state.tru_mock_app and app.state.tru_live_app:
+            try:
+                import pandas as pd
+                
+                all_records = []
+                
+                # Get records from MockPromptForge app
+                try:
+                    mock_result = app.state.tru_session.get_records_and_feedback(app_name="MockPromptForge")
+                    if isinstance(mock_result, tuple):
+                        mock_records_df, _ = mock_result
+                        if not mock_records_df.empty:
+                            all_records.append(mock_records_df)
+                            logger.info(f"Retrieved {len(mock_records_df)} records from MockPromptForge")
+                except Exception as e:
+                    logger.warning(f"No MockPromptForge records found: {e}")
+                
+                # Get records from PromptForge app
+                try:
+                    live_result = app.state.tru_session.get_records_and_feedback(app_name="PromptForge")
+                    if isinstance(live_result, tuple):
+                        live_records_df, _ = live_result
+                        if not live_records_df.empty:
+                            all_records.append(live_records_df)
+                            logger.info(f"Retrieved {len(live_records_df)} records from PromptForge")
+                except Exception as e:
+                    logger.warning(f"No PromptForge records found: {e}")
+                
+                # Combine all records
+                if all_records:
+                    records_df = pd.concat(all_records, ignore_index=True)
+                    logger.info(f"✅ Combined {len(records_df)} total records from retirement apps")
+                else:
+                    logger.info("No records found from retirement apps")
+                    
+            except Exception as e1:
+                logger.warning(f"Failed to get records from retirement apps: {e1}")
+        else:
+            logger.warning("No unified retirement apps available for record retrieval")
             
             # Method 2: Try without filters (get all records)
             try:
@@ -1128,10 +917,11 @@ async def get_trulens_dashboard(token: str = Depends(verify_token)):
         # Recent records (last 10)
         recent_records = []
         for idx, record in records_df.tail(10).iterrows():
-            # Safely handle app_id which might be None
-            app_id_value = record.get('app_id', app.state.tru_app_id if hasattr(app.state, 'tru_app_id') else 'Unknown')
+            # Safely handle app_id which might be None - use app_name from record
+            app_id_value = record.get('app_id', 'Unknown')
             if app_id_value is None:
-                app_id_value = app.state.tru_app_id if hasattr(app.state, 'tru_app_id') else 'multi-person-retirement-eligibility'
+                # Try to get app_name from the record, fallback to retirement app name
+                app_id_value = record.get('app_name', 'PromptForge')
             
             recent_records.append({
                 "record_id": str(record.get('record_id', idx)),
