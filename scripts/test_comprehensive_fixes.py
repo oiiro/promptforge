@@ -135,7 +135,7 @@ class ComprehensiveTest:
     async def test_trulens_monitoring(self, client: httpx.AsyncClient) -> bool:
         """Test TruLens monitoring functionality"""
         
-        test_query = "Test TruLens monitoring with John Smith, email: john@example.com"
+        test_query = "Test PromptForge TruLens monitoring with John Smith, email: john@example.com"
         
         payload = {
             "query": test_query,

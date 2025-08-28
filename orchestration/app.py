@@ -23,9 +23,10 @@ import uvicorn
 from dotenv import load_dotenv
 
 # Import our modules
-from llm_client import LLMClient
 import sys
 sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent))
+from llm_client import LLMClient
 from guardrails.validators import GuardrailOrchestrator
 from observability.tracing import TracingManager
 from observability.metrics import MetricsCollector
@@ -161,9 +162,34 @@ async def lifespan(app: FastAPI):
     # Initialize TruLens monitoring
     if TRULENS_AVAILABLE:
         try:
-            app.state.tru_session = TruSession()
+            # Use configured database URL from environment
+            database_url = os.getenv("TRULENS_DATABASE_URL", "sqlite:///default.sqlite")
+            logger.info(f"Initializing TruLens with database: {database_url}")
+            app.state.tru_session = TruSession(database_url=database_url)
             # Comment out reset_database() as it can hang during startup
             # app.state.tru_session.reset_database()  # Start fresh for demo
+            
+            # Register the app with TruLens to ensure proper record retrieval
+            app.state.tru_app_id = "promptforge"
+            
+            # Create TruVirtual app wrapper for TruLens
+            from trulens.apps.virtual import TruVirtual
+            virtual_app = {
+                "llm": {"provider": "openai", "model": "gpt-4"},
+                "type": "promptforge",
+                "description": "PromptForge PII-protected multi-person processing system"
+            }
+            
+            app.state.tru_app = TruVirtual(
+                app_name=app.state.tru_app_id,
+                app_id=app.state.tru_app_id,
+                app_version="1.0.0",
+                app=virtual_app
+            )
+            
+            # Register the app in TruLens session
+            app.state.tru_session.add_app(app=app.state.tru_app)
+            logger.info(f"TruLens app '{app.state.tru_app_id}' registered successfully")
             
             # Create feedback functions for PII monitoring
             app.state.pii_detection_feedback = create_pii_detection_feedback()
@@ -739,7 +765,7 @@ async def check_multi_person_retirement_eligibility(
                             
                             # Use TruLens session to record the interaction
                             app_record = app.state.tru_session.add_record(
-                                app_id="multi-person-retirement-eligibility",
+                                app_id=app.state.tru_app_id,
                                 input=request.query,
                                 output=monitoring_result.get("final_response", ""),
                                 cost=Cost(n_tokens=0, n_prompt_tokens=0, n_completion_tokens=0),  # Use Cost object
@@ -1034,15 +1060,50 @@ async def get_trulens_dashboard(token: str = Depends(verify_token)):
         raise HTTPException(status_code=503, detail="TruLens session not initialized")
     
     try:
-        # Get all records
-        records_df = app.state.tru_session.get_records_and_feedback()
+        # Try multiple approaches to get records safely
+        records_df = None
         
-        if records_df.empty:
+        # Method 1: Try with app_name (new TruLens API)
+        try:
+            result = app.state.tru_session.get_records_and_feedback(app_name=app.state.tru_app_id)
+            if isinstance(result, tuple):
+                records_df, feedback_columns = result
+                logger.info(f"Successfully retrieved records using app_name filter: {len(records_df)} records, {len(feedback_columns)} feedback columns")
+            else:
+                records_df = result
+                logger.info(f"Successfully retrieved records using app_name filter (non-tuple)")
+        except Exception as e1:
+            logger.warning(f"Failed to get records with app_name filter: {e1}")
+            
+            # Method 2: Try without filters (get all records)
+            try:
+                result = app.state.tru_session.get_records_and_feedback()
+                if isinstance(result, tuple):
+                    records_df, feedback_columns = result
+                    logger.info(f"Retrieved all records without filters: {len(records_df)} records")
+                else:
+                    records_df = result
+                    logger.info(f"Retrieved all records without filters (non-tuple)")
+            except Exception as e2:
+                logger.warning(f"Failed to get all records: {e2}")
+                
+                # Method 3: Use simplified approach - return empty result for now
+                logger.info("Using simplified empty result approach")
+                return {
+                    "total_records": 0,
+                    "pii_detection_metrics": {"message": "TruLens records access currently unavailable"},
+                    "anonymization_metrics": {"message": "TruLens records access currently unavailable"},
+                    "recent_records": [],
+                    "dashboard_url": f"http://localhost:8501" if os.getenv("TRULENS_DASHBOARD_ENABLED") == "true" else None
+                }
+        
+        if records_df is None or records_df.empty:
             return {
                 "total_records": 0,
                 "pii_detection_metrics": {},
                 "anonymization_metrics": {},
-                "recent_records": []
+                "recent_records": [],
+                "dashboard_url": f"http://localhost:8501" if os.getenv("TRULENS_DASHBOARD_ENABLED") == "true" else None
             }
         
         # Calculate metrics
@@ -1067,12 +1128,17 @@ async def get_trulens_dashboard(token: str = Depends(verify_token)):
         # Recent records (last 10)
         recent_records = []
         for idx, record in records_df.tail(10).iterrows():
+            # Safely handle app_id which might be None
+            app_id_value = record.get('app_id', app.state.tru_app_id if hasattr(app.state, 'tru_app_id') else 'Unknown')
+            if app_id_value is None:
+                app_id_value = app.state.tru_app_id if hasattr(app.state, 'tru_app_id') else 'multi-person-retirement-eligibility'
+            
             recent_records.append({
                 "record_id": str(record.get('record_id', idx)),
                 "timestamp": str(record.get('start_time', '')),
                 "pii_detection_score": float(record.get('PII Detection', 0.0)),
                 "anonymization_quality_score": float(record.get('Anonymization Quality', 0.0)),
-                "app_name": str(record.get('app_id', 'Unknown'))
+                "app_name": str(app_id_value)
             })
         
         return {

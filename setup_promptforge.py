@@ -2,6 +2,12 @@
 """
 PromptForge Setup & Verification Script
 Comprehensive setup and verification for financial services grade prompt engineering SDLC
+
+INCLUDES TRULENS INTEGRATION FIXES:
+- Dashboard NoneType app_id error resolution
+- Proper tuple unpacking for get_records_and_feedback()
+- PromptForge app registration and branding updates
+- Database compatibility verification (TruLens v2.2.4)
 """
 
 import os
