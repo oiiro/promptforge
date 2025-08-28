@@ -298,6 +298,48 @@ curl -X POST http://localhost:8000/api/v1/retirement-eligibility \
     "enable_pii_protection": true,
     "enable_monitoring": true
   }'
+
+# Expected successful response indicators:
+# - "trulens_monitoring": true in metadata
+# - Server logs show: "✅ added record record_hash_..."
+# - "TruLens record successfully added for request..."
+```
+
+### Multi-Person PII Protection - EMAIL_ADDRESS_3 Issue Resolution
+
+**Problem**: EMAIL_ADDRESS_3 placeholders not being deanonymized in multi-person scenarios
+**Root Cause**: Mock service hardcoded to expect 3 email addresses but input only contained 2
+**Solution**: Dynamic placeholder reuse implemented in `orchestration/app.py:PresidioManager.mock_multi_person_retirement_eligibility()`
+
+```python
+# Fixed dynamic email handling:
+if i < len(email_placeholders):
+    email_ph = email_placeholders[i]
+else:
+    # Reuse existing email addresses when insufficient placeholders
+    if email_placeholders:
+        email_ph = email_placeholders[-1]  # Reuse last email address
+    else:
+        email_ph = "N/A"  # No email available
+```
+
+**Additional Fix**: URL entity filtering to prevent interference with EMAIL_ADDRESS entities
+```python
+# Filter URL entities that overlap with EMAIL_ADDRESS entities
+email_ranges = [(r.start, r.end) for r in filtered_results if r.entity_type == 'EMAIL_ADDRESS']
+final_results = []
+
+for result in filtered_results:
+    if result.entity_type == 'URL':
+        # Check if this URL entity is contained within any email address
+        is_within_email = any(
+            email_start <= result.start < result.end <= email_end 
+            for email_start, email_end in email_ranges
+        )
+        if not is_within_email:
+            final_results.append(result)
+    else:
+        final_results.append(result)
 ```
 
 ## Usage Examples
@@ -417,6 +459,36 @@ pip install trulens-providers-openai>=2.2.4
 pip install langchain>=0.3.27 langchain-core>=0.3.75 langchain-community>=0.3.29
 ```
 
+**1a. TruLens Cost Import Errors - RESOLVED**
+```bash
+# Issue: ImportError: cannot import name 'Cost' from 'trulens.core.schema.record'
+# Root Cause: Incorrect import path for Cost class in TruLens v2.2.4+
+# Solution: Use correct import path
+from trulens.core.schema.base import Cost
+
+# Correct TruLens record creation:
+cost=Cost(n_tokens=0, n_prompt_tokens=0, n_completion_tokens=0)
+calls=[]  # Provide empty list for calls parameter
+```
+
+**1b. TruLens Record Validation Errors - RESOLVED**
+```bash
+# Issue: "2 validation errors for Record: cost - Input should be a valid dictionary or instance of Cost"
+# Root Cause: TruLens expects Cost object and calls list, not primitive values
+# Solution: Import Cost class and provide proper structure
+from trulens.core.schema.base import Cost
+
+app_record = tru_session.add_record(
+    app_id="multi-person-retirement-eligibility",
+    input=request.query,
+    output=response_text,
+    cost=Cost(n_tokens=0, n_prompt_tokens=0, n_completion_tokens=0),  # Cost object
+    calls=[],  # Empty calls list
+    latency=processing_time_ms,
+    metadata=metadata_dict
+)
+```
+
 **2. Dashboard 404 Not Found**
 ```bash
 # Issue: {"detail":"Not Found"} when accessing TruLens dashboard
@@ -441,12 +513,20 @@ session.run_dashboard(port=8501)
 ls -la *.db  # Check if trulens.db exists
 ```
 
-**4. Server Hanging During TruLens Initialization**
+**4. Server Hanging During TruLens Initialization - RESOLVED**
 ```bash
 # Issue: FastAPI server hangs during startup when initializing TruLens
-# Root Cause: TruLens database setup or provider initialization issues
-# Solution: Use fallback initialization with error handling
-# The app.py includes graceful fallback when TruLens fails to initialize
+# Root Cause: TruLens reset_database() call blocks during startup, LLM health check blocking
+# Solution: Comment out blocking operations and add proper async handling
+
+# Fixed in orchestration/app.py lifespan function:
+# app.state.tru_session.reset_database()  # Commented out - can hang during startup
+
+# Fixed LLM health check with timeout:
+is_healthy = await asyncio.wait_for(
+    loop.run_in_executor(None, self.provider.health_check),
+    timeout=3.0  # 3 second timeout
+)
 ```
 
 **5. Missing Dependencies in requirements.txt**

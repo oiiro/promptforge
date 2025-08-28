@@ -160,13 +160,18 @@ async def lifespan(app: FastAPI):
     
     # Initialize TruLens monitoring
     if TRULENS_AVAILABLE:
-        app.state.tru_session = TruSession()
-        app.state.tru_session.reset_database()  # Start fresh for demo
-        
-        # Create feedback functions for PII monitoring
-        app.state.pii_detection_feedback = create_pii_detection_feedback()
-        app.state.anonymization_quality_feedback = create_anonymization_quality_feedback()
-        logger.info("TruLens monitoring initialized")
+        try:
+            app.state.tru_session = TruSession()
+            # Comment out reset_database() as it can hang during startup
+            # app.state.tru_session.reset_database()  # Start fresh for demo
+            
+            # Create feedback functions for PII monitoring
+            app.state.pii_detection_feedback = create_pii_detection_feedback()
+            app.state.anonymization_quality_feedback = create_anonymization_quality_feedback()
+            logger.info("TruLens monitoring initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize TruLens: {e}")
+            app.state.tru_session = None
     else:
         app.state.tru_session = None
     
@@ -178,10 +183,14 @@ async def lifespan(app: FastAPI):
         deployed_at=datetime.utcnow().isoformat()
     )
     
-    # Warm up providers
+    # Warm up providers with timeout
     try:
-        await app.state.llm_client.health_check()
+        # Add timeout to prevent hanging
+        import asyncio
+        await asyncio.wait_for(app.state.llm_client.health_check(), timeout=5.0)
         logger.info("LLM provider warmed up successfully")
+    except asyncio.TimeoutError:
+        logger.warning("LLM provider health check timed out after 5 seconds")
     except Exception as e:
         logger.warning(f"Failed to warm up LLM provider: {e}")
     
@@ -275,7 +284,9 @@ def create_pii_detection_feedback():
         except Exception:
             return 0.0
     
-    return feedback(pii_detection_score, name="PII Detection")
+    # For now, return the function directly without TruLens feedback wrapper
+    # This allows PII detection to work without full TruLens integration
+    return pii_detection_score
 
 def create_anonymization_quality_feedback():
     """Create feedback function to evaluate anonymization quality"""
@@ -305,7 +316,9 @@ def create_anonymization_quality_feedback():
         except Exception:
             return 0.0
     
-    return feedback(anonymization_quality_score, name="Anonymization Quality")
+    # For now, return the function directly without TruLens feedback wrapper
+    # This allows anonymization quality checking to work without full TruLens integration
+    return anonymization_quality_score
 
 # Presidio PII Protection utilities
 class PresidioManager:
@@ -327,9 +340,25 @@ class PresidioManager:
         if not self.anonymizer or not pii_results:
             return text, {}
         
-        # Filter overlapping entities (prioritize EMAIL_ADDRESS over URL)
+        # Filter overlapping entities and prioritize EMAIL_ADDRESS over URL
         filtered_results = self._filter_overlapping_entities(pii_results)
-        sorted_results = sorted(filtered_results, key=lambda x: x.start)
+        # Additional filtering: Remove URL entities that are part of EMAIL_ADDRESS entities
+        email_ranges = [(r.start, r.end) for r in filtered_results if r.entity_type == 'EMAIL_ADDRESS']
+        final_results = []
+        
+        for result in filtered_results:
+            if result.entity_type == 'URL':
+                # Check if this URL entity is contained within any email address
+                is_within_email = any(
+                    email_start <= result.start < result.end <= email_end 
+                    for email_start, email_end in email_ranges
+                )
+                if not is_within_email:
+                    final_results.append(result)
+            else:
+                final_results.append(result)
+        
+        sorted_results = sorted(final_results, key=lambda x: x.start)
         
         entity_counters = {}
         anonymization_map = {}
@@ -435,26 +464,58 @@ class PresidioManager:
         return result
     
     def mock_multi_person_retirement_eligibility(self, anonymized_query: str, anonymization_map: dict):
-        """Mock service for multi-person retirement eligibility"""
-        response_template = (
-            "Here is the eligibility confirmation:\n\n"
-            "1. <NAME_1> (born in <DATE_1>) with email <EMAIL_ADDRESS_1> is eligible for an account with a $10,000 deposit.\n"
-            "2. <NAME_2> (born in <DATE_2>) with email <EMAIL_ADDRESS_2> is eligible for an account with a $10,000 deposit.\n"
-            "3. <NAME_3> (born in <DATE_3>) with email <EMAIL_ADDRESS_3> is eligible for an account with a $10,000 deposit."
-        )
+        """Mock service for multi-person retirement eligibility with dynamic placeholder handling"""
+        
+        # Analyze available placeholders in the anonymization map
+        name_placeholders = sorted([k for k in anonymization_map.keys() if k.startswith('<NAME_')])
+        email_placeholders = sorted([k for k in anonymization_map.keys() if k.startswith('<EMAIL_ADDRESS_')])
+        date_placeholders = sorted([k for k in anonymization_map.keys() if k.startswith('<DATE_')])
+        
+        # Determine number of persons to process
+        persons_count = max(len(name_placeholders), len(email_placeholders), 1)
+        
+        # Build dynamic response template
+        response_lines = ["Here is the eligibility confirmation:\n"]
+        
+        for i in range(persons_count):
+            person_num = i + 1
+            
+            # Use available placeholders or fallback to generic ones
+            name_ph = name_placeholders[i] if i < len(name_placeholders) else f"<NAME_{person_num}>"
+            date_ph = date_placeholders[i] if i < len(date_placeholders) else f"<DATE_{person_num}>"
+            
+            # For emails, be more careful - reuse existing emails if we don't have enough
+            if i < len(email_placeholders):
+                email_ph = email_placeholders[i]
+            else:
+                # If we don't have enough email addresses, either use "N/A" or reuse the last available one
+                if email_placeholders:
+                    email_ph = email_placeholders[-1]  # Reuse last email address
+                else:
+                    email_ph = "N/A"  # No email available
+            
+            line = f"{person_num}. {name_ph} (born in {date_ph}) with email {email_ph} is eligible for an account with a $10,000 deposit."
+            response_lines.append(line)
+        
+        response_template = "\n".join(response_lines)
         
         return {
             "response": response_template,
             "eligible": True,
             "deposit_amount": "10,000",
-            "persons_processed": 3,
+            "persons_processed": persons_count,
             "metadata": {
                 "source": "multi_person_retirement_eligibility_service",
                 "model": "mock-financial-multi-person-demo",
                 "pii_protection": "enabled",
                 "requires_deanonymization": True,
                 "multi_entity_support": True,
-                "numbered_placeholders_used": True
+                "numbered_placeholders_used": True,
+                "placeholders_used": {
+                    "names": name_placeholders,
+                    "emails": email_placeholders, 
+                    "dates": date_placeholders
+                }
             }
         }
 
@@ -667,30 +728,57 @@ async def check_multi_person_retirement_eligibility(
                     )
                     retirement_app = RetirementEligibilityApp(presidio_manager)
                     
-                    # Create TruLens app
-                    tru_app = App(
-                        app=retirement_app,
-                        app_name="Multi-Person Retirement Eligibility",
-                        app_version="1.0.0"
-                    )
+                    # Process query and record with TruLens
+                    monitoring_result = retirement_app.process_query(request.query)
                     
-                    # Add feedback functions
-                    if app.state.pii_detection_feedback:
-                        tru_app.add_feedback(app.state.pii_detection_feedback.on_input())
-                    
-                    if app.state.anonymization_quality_feedback:
-                        tru_app.add_feedback(
-                            app.state.anonymization_quality_feedback.on(
-                                original=lambda record: record.main_input,
-                                anonymized=lambda record: record.main_output["anonymized_query"]
+                    # Simplified TruLens recording
+                    if app.state.tru_session:
+                        try:
+                            # Import Cost class from TruLens
+                            from trulens.core.schema.base import Cost
+                            
+                            # Use TruLens session to record the interaction
+                            app_record = app.state.tru_session.add_record(
+                                app_id="multi-person-retirement-eligibility",
+                                input=request.query,
+                                output=monitoring_result.get("final_response", ""),
+                                cost=Cost(n_tokens=0, n_prompt_tokens=0, n_completion_tokens=0),  # Use Cost object
+                                latency=round((time.time() - start_time) * 1000, 2),
+                                calls=[],  # Provide empty list for calls
+                                metadata={
+                                    "request_id": request_id,
+                                    "pii_detected": monitoring_result.get("pii_detected", False),
+                                    "entities_count": len(monitoring_result.get("pii_entities", [])),
+                                    "endpoint": "/api/v1/retirement-eligibility",
+                                    "pii_entities": monitoring_result.get("pii_entities", []),
+                                    "anonymization_applied": monitoring_result.get("anonymization_map") is not None
+                                }
                             )
-                        )
-                    
-                    # Process with TruLens monitoring
-                    with tru_app as recording:
-                        monitoring_result = retirement_app.process_query(request.query)
-                    
-                    tru_record = recording
+                            
+                            tru_record = app_record
+                            logger.info(f"TruLens record successfully added for request {request_id}")
+                            
+                            # Run feedback functions if available
+                            if app.state.pii_detection_feedback:
+                                try:
+                                    pii_score = app.state.pii_detection_feedback(request.query)
+                                    logger.info(f"PII Detection feedback score: {pii_score}")
+                                except Exception as feedback_error:
+                                    logger.warning(f"PII Detection feedback failed: {feedback_error}")
+                            
+                            if app.state.anonymization_quality_feedback:
+                                try:
+                                    anon_score = app.state.anonymization_quality_feedback(
+                                        request.query,
+                                        monitoring_result.get("anonymized_query", "")
+                                    )
+                                    logger.info(f"Anonymization Quality feedback score: {anon_score}")
+                                except Exception as feedback_error:
+                                    logger.warning(f"Anonymization Quality feedback failed: {feedback_error}")
+                                    
+                        except Exception as record_error:
+                            logger.warning(f"TruLens recording failed: {record_error}")
+                            tru_record = None
                     logger.info(f"TruLens monitoring captured for request {request_id}")
                 
             except Exception as e:

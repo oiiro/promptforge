@@ -462,7 +462,19 @@ class LLMClient:
 
     async def health_check(self) -> Dict[str, Any]:
         """Check health of current provider (async version)"""
-        is_healthy = self.provider.health_check()
+        try:
+            # Run the blocking health check in a thread pool to avoid blocking the event loop
+            loop = asyncio.get_event_loop()
+            is_healthy = await asyncio.wait_for(
+                loop.run_in_executor(None, self.provider.health_check),
+                timeout=3.0  # 3 second timeout
+            )
+        except asyncio.TimeoutError:
+            logger.warning(f"Provider {self.provider_name} health check timed out")
+            is_healthy = False
+        except Exception as e:
+            logger.warning(f"Provider {self.provider_name} health check failed: {e}")
+            is_healthy = False
         
         return {
             "status": "healthy" if is_healthy else "unhealthy",
