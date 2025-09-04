@@ -1,0 +1,150 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Financial Planning Output Schema",
+  "description": "Schema for financial planning analysis responses",
+  "properties": {
+    "recommendation": {
+      "type": "string",
+      "description": "Primary financial planning recommendation",
+      "minLength": 50,
+      "maxLength": 1000
+    },
+    "risk_assessment": {
+      "type": "object",
+      "description": "Assessment of financial risk factors",
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["low", "moderate", "high"],
+          "description": "Overall risk level assessment"
+        },
+        "factors": {
+          "type": "array",
+          "description": "Factors contributing to risk assessment",
+          "items": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 200
+          },
+          "minItems": 1,
+          "maxItems": 10
+        }
+      },
+      "required": ["level", "factors"],
+      "additionalProperties": false
+    },
+    "action_plan": {
+      "type": "array",
+      "description": "Prioritized list of recommended actions",
+      "items": {
+        "type": "object",
+        "properties": {
+          "priority": {
+            "type": "integer",
+            "description": "Action priority (1 = highest)",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "action": {
+            "type": "string",
+            "description": "Specific action to take",
+            "minLength": 10,
+            "maxLength": 300
+          },
+          "timeline": {
+            "type": "string",
+            "description": "Recommended timeframe",
+            "minLength": 5,
+            "maxLength": 100
+          },
+          "expected_impact": {
+            "type": "string",
+            "description": "Expected benefit or outcome",
+            "minLength": 10,
+            "maxLength": 200
+          }
+        },
+        "required": ["priority", "action", "timeline", "expected_impact"],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 8
+    },
+    "projections": {
+      "type": "object",
+      "description": "Financial projections and assessments",
+      "properties": {
+        "retirement_readiness": {
+          "type": "number",
+          "description": "Retirement readiness score (0-1)",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "emergency_fund_status": {
+          "type": "string",
+          "enum": ["inadequate", "needs_building", "adequate", "well_funded"],
+          "description": "Emergency fund adequacy assessment"
+        },
+        "debt_payoff_timeline": {
+          "type": "string",
+          "description": "Estimated debt payoff timeline",
+          "minLength": 5,
+          "maxLength": 100
+        }
+      },
+      "required": ["retirement_readiness", "emergency_fund_status", "debt_payoff_timeline"],
+      "additionalProperties": false
+    },
+    "confidence": {
+      "type": "number",
+      "description": "Confidence in the analysis (0-1)",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "disclaimers": {
+      "type": "array",
+      "description": "Required regulatory and legal disclaimers",
+      "items": {
+        "type": "string",
+        "minLength": 20,
+        "maxLength": 500
+      },
+      "minItems": 3,
+      "maxItems": 10
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Analysis metadata and compliance information",
+      "properties": {
+        "analysis_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of analysis"
+        },
+        "compliance_version": {
+          "type": "string",
+          "description": "Compliance framework version",
+          "pattern": "^[A-Z_]+_[0-9]{4}\\.[0-9]+$"
+        },
+        "risk_profile": {
+          "type": "string",
+          "enum": ["conservative", "moderate", "aggressive"],
+          "description": "User's risk tolerance profile"
+        }
+      },
+      "required": ["analysis_date", "compliance_version", "risk_profile"],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "recommendation", 
+    "risk_assessment", 
+    "action_plan", 
+    "projections", 
+    "confidence", 
+    "disclaimers", 
+    "metadata"
+  ],
+  "additionalProperties": false
+}

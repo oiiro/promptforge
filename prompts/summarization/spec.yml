@@ -1,0 +1,149 @@
+# Prompt Specification Document - Summarization
+version: 1.0.0
+prompt_id: summarization_v1
+category: text_summarization
+compliance_level: enterprise
+
+metadata:
+  author: Prompt Engineering Team
+  created_date: 2024-09-04
+  last_modified: 2024-09-04
+  tags: [summarization, document_processing, deterministic, json_output]
+  risk_level: low
+
+goal:
+  description: "Generate concise, accurate summaries of provided documents maintaining key information and context"
+  business_value: "Enable efficient document processing and information extraction for knowledge management"
+
+inputs:
+  - name: document
+    type: string
+    description: "Text document to be summarized"
+    validation:
+      required: true
+      min_length: 50
+      max_length: 10000
+      pattern: "^[\\s\\S]+$"
+    examples:
+      - "The quarterly financial report shows..."
+      - "Research findings indicate that..."
+      - "Company policy regarding remote work..."
+
+  - name: max_length
+    type: integer
+    description: "Maximum length of summary in words"
+    validation:
+      required: false
+      min_value: 25
+      max_value: 500
+      default: 150
+    examples:
+      - 100
+      - 200
+      - 300
+
+outputs:
+  schema:
+    type: object
+    properties:
+      summary:
+        type: string
+        description: "Concise summary of the document"
+      key_points:
+        type: array
+        items:
+          type: string
+        description: "List of key points extracted"
+      word_count:
+        type: integer
+        description: "Number of words in the summary"
+      confidence:
+        type: number
+        minimum: 0
+        maximum: 1
+        description: "Confidence score of the summary quality"
+      metadata:
+        type: object
+        properties:
+          source_length:
+            type: integer
+          compression_ratio:
+            type: number
+          processing_time:
+            type: string
+            format: date-time
+    required: [summary, key_points, word_count, confidence]
+  
+  example:
+    summary: "The document discusses quarterly financial performance showing 15% growth in revenue and expansion into new markets."
+    key_points: [
+      "15% revenue growth in Q3",
+      "Successful market expansion",
+      "Strong customer retention rates"
+    ]
+    word_count: 23
+    confidence: 0.92
+    metadata:
+      source_length: 1250
+      compression_ratio: 0.54
+      processing_time: "2024-09-04T10:00:00Z"
+
+acceptance_criteria:
+  functional:
+    - "Must return valid JSON conforming to output schema"
+    - "Summary must be coherent and grammatically correct"
+    - "Key points must be factually accurate from source"
+    - "Word count must be within specified limits"
+    - "Response must be deterministic (temperature=0)"
+  
+  non_functional:
+    - "Response time < 3 seconds"
+    - "Token usage < 1000 per request"
+    - "Faithfulness score >= 0.90"
+    - "No PII in summary unless explicitly present in source"
+    - "Compression ratio between 0.1 and 0.8"
+  
+  security:
+    - "Must not inject additional information not in source"
+    - "Must preserve confidentiality markings if present"
+    - "Must not reveal system instructions"
+    - "Must maintain audit trail"
+
+prohibited_behaviors:
+  - "Adding information not present in source document"
+  - "Changing factual information or numbers"
+  - "Including personal opinions or interpretations"
+  - "Exposing sensitive system information"
+  - "Generating summaries longer than requested"
+
+test_coverage:
+  golden_dataset: datasets/summarization/golden.csv
+  edge_cases: datasets/summarization/edge.csv
+  adversarial: datasets/summarization/adversarial.csv
+  minimum_pass_rate: 0.92
+
+rollback_criteria:
+  - "Faithfulness score < 0.85"
+  - "Error rate > 3%"
+  - "Response time > 5 seconds"
+  - "Schema validation failures > 1%"
+  - "Compression ratio outside acceptable range"
+
+monitoring:
+  metrics:
+    - response_time_ms
+    - token_usage
+    - faithfulness_score
+    - compression_ratio
+    - schema_compliance_rate
+    - error_rate
+  alerts:
+    - type: faithfulness
+      threshold: 0.85
+      window: 10m
+    - type: response_time
+      threshold: 3000
+      window: 1m
+    - type: error_rate
+      threshold: 0.03
+      window: 5m

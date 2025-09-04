@@ -1,0 +1,11 @@
+age,income,savings,debt,risk_tolerance,time_horizon,goals,expected_priority_1,expected_risk_level,expected_confidence_min,notes
+25,45000,5000,15000,aggressive,40,"retirement|house_down_payment",emergency_fund,moderate,0.80,Young professional starting out
+35,75000,25000,8000,moderate,30,"retirement|children_education",debt_payoff,moderate,0.85,Mid-career with family planning
+45,95000,150000,5000,conservative,20,"retirement|healthcare",retirement_contributions,low,0.88,Pre-retirement planning
+28,52000,2000,25000,moderate,35,"debt_reduction|emergency_fund",debt_reduction,high,0.82,High debt burden case
+42,120000,300000,0,aggressive,23,"retirement|investment_growth",investment_diversification,low,0.90,High earner debt-free
+55,85000,400000,12000,conservative,10,"retirement|estate_planning",retirement_preparation,low,0.87,Near retirement planning
+30,38000,8000,18000,conservative,30,"stability|emergency_fund",emergency_fund,moderate,0.79,Lower income stability focused
+38,68000,45000,0,moderate,27,"retirement|house_purchase",house_down_payment,moderate,0.86,Ready for major purchase
+50,110000,200000,15000,aggressive,15,"retirement|wealth_building",debt_elimination,moderate,0.89,Late career wealth building
+26,41000,1500,22000,moderate,35,"debt_freedom|stability",debt_consolidation,high,0.78,Heavy debt burden

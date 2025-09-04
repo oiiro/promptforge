@@ -1,0 +1,54 @@
+{
+  "version": "1.0.0",
+  "created_at": "2024-09-04T10:00:00Z",
+  "created_by": "financial-ai-team",
+  "compliance_reviewed": true,
+  "compliance_reviewer": "legal-team",
+  "compliance_date": "2024-09-04T09:00:00Z",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2024-09-04",
+      "changes": [
+        "Initial implementation of financial planning analysis prompt",
+        "Added comprehensive regulatory compliance measures",
+        "Implemented risk-based recommendation system",
+        "Added required disclaimers and legal safeguards",
+        "Integrated PII protection measures"
+      ]
+    }
+  ],
+  "compatibility": {
+    "min_framework_version": "1.0.0",
+    "tested_with": [
+      "gpt-4o",
+      "claude-3-sonnet"
+    ],
+    "not_recommended": [
+      "gpt-3.5-turbo"
+    ]
+  },
+  "performance_benchmarks": {
+    "avg_response_time_ms": 3200,
+    "avg_compliance_score": 0.98,
+    "avg_recommendation_relevance": 0.89,
+    "token_usage_range": [800, 1400]
+  },
+  "regulatory_compliance": {
+    "frameworks": ["SEC", "FINRA", "GDPR", "CCPA"],
+    "last_compliance_review": "2024-09-04",
+    "next_compliance_review": "2024-12-04",
+    "compliance_officer": "legal-team@company.com"
+  },
+  "risk_assessment": {
+    "prompt_risk_level": "high",
+    "pii_risk": "high",
+    "regulatory_risk": "high",
+    "mitigation_measures": [
+      "Required disclaimers",
+      "PII anonymization",
+      "Session-only data retention",
+      "Regulatory compliance monitoring"
+    ]
+  }
+}

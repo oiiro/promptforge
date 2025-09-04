@@ -23,12 +23,27 @@ def launch_trulens_dashboard():
         from trulens.core import TruSession
         from trulens.dashboard.run import run_dashboard
         
-        # Initialize TruLens session
+        # Initialize TruLens session with consolidated database
         print("🔧 Initializing TruLens session...")
-        session = TruSession()
+        database_url = 'sqlite:///trulens_promptforge.db'
+        os.environ['TRULENS_DATABASE_URL'] = database_url
+        session = TruSession(database_url=database_url)
         
         print("✅ TruLens session created successfully")
-        print("📊 Database: SQLite (default.sqlite)")
+        print("📊 Database: SQLite (trulens_promptforge.db)")
+        
+        # Verify record count
+        try:
+            result = session.get_records_and_feedback(app_name="promptforge")
+            if isinstance(result, tuple):
+                records_df, feedback_columns = result
+            else:
+                records_df = result
+                feedback_columns = []
+            print(f"📋 Records available: {len(records_df)} records")
+        except Exception as e:
+            print(f"⚠️ Could not verify records: {e}")
+        
         print("")
         print("🌐 Starting dashboard...")
         print("   URL: http://localhost:8501")

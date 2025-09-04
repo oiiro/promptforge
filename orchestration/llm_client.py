@@ -40,6 +40,14 @@ except ImportError:
     logger.warning("Guardrails not available. Security features disabled.")
     GUARDRAILS_AVAILABLE = False
 
+# Import mock provider
+try:
+    from orchestration.mock_llm import MockLLMProvider
+    MOCK_AVAILABLE = True
+except ImportError:
+    logger.warning("Mock LLM provider not available.")
+    MOCK_AVAILABLE = False
+
 # Load environment variables
 load_dotenv()
 

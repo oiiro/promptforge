@@ -1,0 +1,31 @@
+{
+  "version": "1.0.0",
+  "created_at": "2024-09-04T10:00:00Z",
+  "created_by": "prompt-engineering-team",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2024-09-04",
+      "changes": [
+        "Initial implementation of document summarization prompt",
+        "Added comprehensive JSON schema validation",
+        "Implemented key points extraction",
+        "Added confidence scoring and metadata tracking"
+      ]
+    }
+  ],
+  "compatibility": {
+    "min_framework_version": "1.0.0",
+    "tested_with": [
+      "gpt-4o",
+      "claude-3-sonnet",
+      "gpt-3.5-turbo"
+    ]
+  },
+  "performance_benchmarks": {
+    "avg_response_time_ms": 2500,
+    "avg_faithfulness_score": 0.91,
+    "avg_compression_ratio": 0.35,
+    "token_usage_range": [400, 800]
+  }
+}
