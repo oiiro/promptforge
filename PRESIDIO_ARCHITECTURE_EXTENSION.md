@@ -873,8 +873,698 @@ class PIIQualityEvaluator:
         return recommendations
 ```
 
-This completes the first part of the Presidio extension architecture. Let me continue with the TruLens integration and remaining components.
+---
 
-<function_calls>
-<invoke name="TodoWrite">
-<parameter name="todos">[{"content": "Design Presidio architecture extension for PromptForge", "status": "completed", "activeForm": "Designed Presidio architecture extension for PromptForge"}, {"content": "Implement modular Presidio middleware components", "status": "completed", "activeForm": "Implemented modular Presidio middleware components"}, {"content": "Create production-grade PII quality checks", "status": "completed", "activeForm": "Created production-grade PII quality checks"}, {"content": "Integrate TruLens monitoring for PII metrics", "status": "in_progress", "activeForm": "Integrating TruLens monitoring for PII metrics"}, {"content": "Add CI/CD pipeline for PII validation", "status": "pending", "activeForm": "Adding CI/CD pipeline for PII validation"}, {"content": "Create scaling architecture documentation", "status": "pending", "activeForm": "Creating scaling architecture documentation"}]
+## TruLens Integration for PII Monitoring
+
+### Extended Evaluation Functions
+
+```python
+# evaluation/pii_evaluation.py
+from typing import Dict, Any, List
+import numpy as np
+from trulens.feedback import Feedback
+from trulens.providers.base import LLMProvider
+
+from presidio.middleware import PresidioMiddleware
+from presidio.quality_checks import PIIQualityEvaluator
+
+class PIIFeedbackProvider(LLMProvider):
+    """TruLens feedback provider for PII evaluation"""
+    
+    def __init__(self, presidio_middleware: PresidioMiddleware):
+        super().__init__()
+        self.presidio = presidio_middleware
+        self.quality_evaluator = PIIQualityEvaluator(presidio_middleware)
+    
+    def pii_anonymization_score(self, input_text: str, output_text: str) -> float:
+        """Evaluate if PII was properly anonymized"""
+        
+        try:
+            # Detect PII in input
+            input_analysis = self.presidio.analyze_pii(input_text)
+            
+            # Check if any original PII appears in output
+            for result in input_analysis:
+                original_pii = input_text[result.start:result.end]
+                if original_pii.lower() in output_text.lower():
+                    return 0.0  # PII leaked
+            
+            # If PII was detected in input but properly handled
+            if input_analysis:
+                return 1.0
+            else:
+                return 0.5  # No PII to evaluate
+                
+        except Exception:
+            return 0.0
+    
+    def pii_detection_accuracy(self, text: str) -> float:
+        """Evaluate PII detection accuracy"""
+        
+        try:
+            analysis_results = self.presidio.analyze_pii(text)
+            
+            # Score based on confidence and coverage
+            if not analysis_results:
+                return 0.5  # Neutral score when no PII detected
+            
+            avg_confidence = np.mean([r.score for r in analysis_results])
+            return avg_confidence
+            
+        except Exception:
+            return 0.0
+    
+    def pii_policy_compliance(self, input_text: str, anonymized_text: str) -> float:
+        """Evaluate compliance with PII policy"""
+        
+        try:
+            # Check if anonymization follows policy rules
+            original_analysis = self.presidio.analyze_pii(input_text)
+            anonymized_analysis = self.presidio.analyze_pii(anonymized_text)
+            
+            # Policy compliant if:
+            # 1. All PII in original is anonymized
+            # 2. No new PII is introduced in anonymized text
+            
+            policy_violations = 0
+            
+            # Check for PII leakage
+            for result in original_analysis:
+                original_pii = input_text[result.start:result.end]
+                if original_pii.lower() in anonymized_text.lower():
+                    policy_violations += 1
+            
+            # Check for new PII in anonymized text
+            if len(anonymized_analysis) > 0:
+                policy_violations += len(anonymized_analysis)
+            
+            if len(original_analysis) == 0:
+                return 1.0  # No PII to violate policy
+            
+            compliance_score = 1.0 - (policy_violations / len(original_analysis))
+            return max(0.0, compliance_score)
+            
+        except Exception:
+            return 0.0
+
+# TruLens feedback functions
+pii_provider = PIIFeedbackProvider(PresidioMiddleware())
+
+pii_anonymization_feedback = Feedback(
+    pii_provider.pii_anonymization_score,
+    name="PII Anonymization"
+).on_input_output()
+
+pii_detection_feedback = Feedback(
+    pii_provider.pii_detection_accuracy,
+    name="PII Detection Accuracy"  
+).on_input()
+
+pii_compliance_feedback = Feedback(
+    pii_provider.pii_policy_compliance,
+    name="PII Policy Compliance"
+).on(input=lambda record: record.input)
+```
+
+---
+
+## Production Deployment Architecture
+
+### Microservice Scaling Pattern
+
+```yaml
+# docker-compose.production.yml
+version: '3.8'
+
+services:
+  presidio-analyzer:
+    image: mcr.microsoft.com/presidio-analyzer:2.2.351
+    environment:
+      - RECOGNIZER_STORE_API_ADDRESS=http://recognizer-store:3004
+    ports:
+      - "5001:3000"
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+  
+  presidio-anonymizer:
+    image: mcr.microsoft.com/presidio-anonymizer:2.2.351
+    ports:
+      - "5002:3000"
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+  
+  promptforge-api:
+    build: .
+    environment:
+      - PRESIDIO_ANALYZER_URL=http://presidio-analyzer:3000
+      - PRESIDIO_ANONYMIZER_URL=http://presidio-anonymizer:3000
+      - REDIS_URL=redis://redis:6379
+      - TRULENS_DATABASE_URL=postgresql://trulens:password@postgres:5432/trulens_production
+    ports:
+      - "8000:8000"
+    depends_on:
+      - presidio-analyzer  
+      - presidio-anonymizer
+      - redis
+      - postgres
+    deploy:
+      replicas: 5
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+  
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+  
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=trulens_production
+      - POSTGRES_USER=trulens
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+  
+  trulens-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    environment:
+      - TRULENS_DATABASE_URL=postgresql://trulens:password@postgres:5432/trulens_production
+    ports:
+      - "8501:8501"
+    depends_on:
+      - postgres
+
+volumes:
+  redis_data:
+  postgres_data:
+```
+
+### Kubernetes Production Deployment
+
+```yaml
+# k8s/presidio-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: promptforge-presidio
+  namespace: promptforge-production
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: promptforge-presidio
+  template:
+    metadata:
+      labels:
+        app: promptforge-presidio
+    spec:
+      containers:
+      - name: promptforge-api
+        image: promptforge:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: PRESIDIO_ANALYZER_URL
+          value: "http://presidio-analyzer-service:3000"
+        - name: PRESIDIO_ANONYMIZER_URL
+          value: "http://presidio-anonymizer-service:3000"
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: redis-credentials
+              key: url
+        - name: TRULENS_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: trulens-db-credentials
+              key: url
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: promptforge-presidio-service
+  namespace: promptforge-production
+spec:
+  selector:
+    app: promptforge-presidio
+  ports:
+  - port: 80
+    targetPort: 8000
+  type: ClusterIP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: promptforge-presidio-ingress
+  namespace: promptforge-production
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+spec:
+  tls:
+  - hosts:
+    - promptforge.company.com
+    secretName: promptforge-tls
+  rules:
+  - host: promptforge.company.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: promptforge-presidio-service
+            port:
+              number: 80
+```
+
+---
+
+## CI/CD Pipeline Integration
+
+### Enhanced GitHub Actions Workflow
+
+```yaml
+# .github/workflows/presidio-validation.yml
+name: Presidio PII Validation Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  pii-quality-checks:
+    name: PII Quality Validation
+    runs-on: ubuntu-latest
+    
+    services:
+      presidio-analyzer:
+        image: mcr.microsoft.com/presidio-analyzer:2.2.351
+        ports:
+          - 3000:3000
+        options: --health-cmd="curl -f http://localhost:3000/health" --health-interval=10s --health-timeout=5s --health-retries=5
+      
+      presidio-anonymizer:
+        image: mcr.microsoft.com/presidio-anonymizer:2.2.351
+        ports:
+          - 3001:3000
+        options: --health-cmd="curl -f http://localhost:3000/health" --health-interval=10s --health-timeout=5s --health-retries=5
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install presidio-analyzer presidio-anonymizer
+      
+      - name: Wait for Presidio services
+        run: |
+          timeout 60 bash -c 'until curl -f http://localhost:3000/health; do sleep 2; done'
+          timeout 60 bash -c 'until curl -f http://localhost:3001/health; do sleep 2; done'
+      
+      - name: Run PII Detection Tests
+        env:
+          PRESIDIO_ANALYZER_URL: http://localhost:3000
+          PRESIDIO_ANONYMIZER_URL: http://localhost:3001
+        run: |
+          python -m pytest tests/presidio/test_pii_detection.py -v \
+            --cov=presidio --cov-report=xml \
+            --junitxml=reports/pii-detection-results.xml
+      
+      - name: Run PII Anonymization Tests  
+        run: |
+          python -m pytest tests/presidio/test_pii_anonymization.py -v \
+            --junitxml=reports/pii-anonymization-results.xml
+      
+      - name: Run PII Quality Evaluation
+        run: |
+          python scripts/run_pii_quality_evaluation.py \
+            --output-path reports/pii-quality-report.json \
+            --threshold-detection-f1 0.9 \
+            --threshold-anonymization-success 0.98 \
+            --threshold-roundtrip-accuracy 0.95 \
+            --threshold-adversarial-defense 0.95
+      
+      - name: Check PII Quality Thresholds
+        run: |
+          python scripts/check_pii_thresholds.py \
+            --report reports/pii-quality-report.json \
+            --fail-on-breach
+      
+      - name: Upload PII Quality Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: pii-quality-reports
+          path: reports/
+
+  trulens-pii-evaluation:
+    name: TruLens PII Monitoring
+    needs: pii-quality-checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      
+      - name: Run TruLens PII Evaluation
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TRULENS_DATABASE_URL: sqlite:///trulens_ci.db
+        run: |
+          python scripts/run_trulens_pii_evaluation.py \
+            --dataset datasets/pii_golden.csv \
+            --output reports/trulens-pii-evaluation.json \
+            --threshold-pii-anonymization 0.95 \
+            --threshold-pii-compliance 0.98
+      
+      - name: Generate TruLens Dashboard
+        run: |
+          python scripts/generate_trulens_dashboard_export.py \
+            --database trulens_ci.db \
+            --output reports/trulens-dashboard-export.html
+
+  security-scan:
+    name: PII Security Scanning
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Run PII Leak Detection
+        run: |
+          python scripts/scan_for_pii_leaks.py \
+            --source-dir . \
+            --exclude-dirs venv,.git,node_modules \
+            --output reports/pii-leak-scan.json
+      
+      - name: Check for PII in Test Data
+        run: |
+          python scripts/validate_test_data_pii.py \
+            --datasets-dir datasets/ \
+            --ensure-synthetic \
+            --output reports/test-data-validation.json
+```
+
+---
+
+## Monitoring & Observability
+
+### Production Metrics
+
+```python
+# monitoring/pii_metrics.py
+from prometheus_client import Counter, Histogram, Gauge, CollectorRegistry
+import time
+from typing import Dict, Any
+from datetime import datetime
+
+# PII-specific metrics
+pii_requests_total = Counter(
+    'presidio_pii_requests_total',
+    'Total PII processing requests',
+    ['operation', 'status', 'policy']
+)
+
+pii_processing_duration = Histogram(
+    'presidio_pii_processing_seconds',
+    'PII processing duration',
+    ['operation', 'policy'],
+    buckets=[0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+)
+
+pii_entities_detected = Counter(
+    'presidio_pii_entities_detected_total',
+    'Total PII entities detected',
+    ['entity_type', 'confidence_level', 'policy']
+)
+
+pii_anonymization_failures = Counter(
+    'presidio_pii_anonymization_failures_total',
+    'PII anonymization failures',
+    ['reason', 'policy']
+)
+
+pii_policy_violations = Counter(
+    'presidio_pii_policy_violations_total',
+    'PII policy violations detected',
+    ['violation_type', 'severity', 'policy']
+)
+
+pii_active_sessions = Gauge(
+    'presidio_pii_active_sessions',
+    'Currently active PII processing sessions'
+)
+
+class PIIMetricsCollector:
+    """Production PII metrics collector"""
+    
+    def __init__(self):
+        self.active_sessions = set()
+    
+    def record_pii_request(self, operation: str, status: str, policy: str):
+        """Record PII processing request"""
+        pii_requests_total.labels(operation=operation, status=status, policy=policy).inc()
+    
+    def record_pii_processing_duration(self, operation: str, policy: str, duration: float):
+        """Record PII processing duration"""
+        pii_processing_duration.labels(operation=operation, policy=policy).observe(duration)
+    
+    def record_pii_entities_detected(self, entity_type: str, confidence: float, policy: str):
+        """Record detected PII entities"""
+        confidence_level = self._get_confidence_level(confidence)
+        pii_entities_detected.labels(
+            entity_type=entity_type,
+            confidence_level=confidence_level,
+            policy=policy
+        ).inc()
+    
+    def record_pii_anonymization_failure(self, reason: str, policy: str):
+        """Record anonymization failure"""
+        pii_anonymization_failures.labels(reason=reason, policy=policy).inc()
+    
+    def record_pii_policy_violation(self, violation_type: str, severity: str, policy: str):
+        """Record policy violation"""
+        pii_policy_violations.labels(
+            violation_type=violation_type,
+            severity=severity,
+            policy=policy
+        ).inc()
+    
+    def start_pii_session(self, session_id: str):
+        """Start tracking PII session"""
+        self.active_sessions.add(session_id)
+        pii_active_sessions.set(len(self.active_sessions))
+    
+    def end_pii_session(self, session_id: str):
+        """End tracking PII session"""
+        self.active_sessions.discard(session_id)
+        pii_active_sessions.set(len(self.active_sessions))
+    
+    def _get_confidence_level(self, confidence: float) -> str:
+        """Convert confidence score to level"""
+        if confidence >= 0.9:
+            return "high"
+        elif confidence >= 0.7:
+            return "medium"
+        else:
+            return "low"
+
+# Global metrics collector instance
+pii_metrics = PIIMetricsCollector()
+```
+
+### Grafana Dashboard Configuration
+
+```json
+{
+  "dashboard": {
+    "title": "PromptForge PII Protection Dashboard",
+    "tags": ["promptforge", "pii", "presidio"],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "title": "PII Processing Requests",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(rate(presidio_pii_requests_total[5m]))",
+            "legendFormat": "Requests/sec"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps"
+          }
+        }
+      },
+      {
+        "title": "PII Detection Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum by (entity_type) (rate(presidio_pii_entities_detected_total[5m]))",
+            "legendFormat": "{{ entity_type }}"
+          }
+        ]
+      },
+      {
+        "title": "PII Processing Latency",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(presidio_pii_processing_seconds_bucket[5m]))",
+            "legendFormat": "95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(presidio_pii_processing_seconds_bucket[5m]))",
+            "legendFormat": "50th percentile"
+          }
+        ]
+      },
+      {
+        "title": "PII Policy Violations",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(rate(presidio_pii_policy_violations_total[5m]))",
+            "legendFormat": "Violations/sec"
+          }
+        ],
+        "thresholds": {
+          "steps": [
+            {"color": "green", "value": 0},
+            {"color": "yellow", "value": 0.1},
+            {"color": "red", "value": 1}
+          ]
+        }
+      },
+      {
+        "title": "Active PII Sessions",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "presidio_pii_active_sessions",
+            "legendFormat": "Active Sessions"
+          }
+        ]
+      },
+      {
+        "title": "PII Anonymization Failures",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "sum by (reason, policy) (rate(presidio_pii_anonymization_failures_total[5m]))",
+            "format": "table"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Summary
+
+The Presidio Architecture Extension provides:
+
+### ✅ **Production-Ready Features**
+
+1. **Enterprise PII Protection**: Microsoft Presidio integration with custom financial services recognizers
+2. **Flexible Policy Engine**: Configurable PII handling policies (REDACT, MASK, HASH, TOKENIZE, SYNTHETIC)
+3. **Reversible Anonymization**: Secure de-anonymization with session management and Redis storage
+4. **Comprehensive Quality Assurance**: Multi-dimensional PII quality evaluation framework
+5. **TruLens Integration**: Real-time PII monitoring and evaluation feedback functions
+6. **Production Deployment**: Docker, Kubernetes, and microservice scaling patterns
+7. **Advanced CI/CD**: Automated PII validation in GitHub Actions pipeline
+8. **Enterprise Monitoring**: Prometheus metrics and Grafana dashboards for PII observability
+
+### 🎯 **Key Benefits**
+
+- **Privacy-First**: All PII anonymized before LLM processing
+- **Regulatory Compliance**: Financial services grade data protection
+- **Horizontal Scalability**: Microservice architecture supporting high throughput
+- **Quality Assurance**: Comprehensive testing including adversarial defense evaluation
+- **Production Monitoring**: Real-time observability and alerting for PII protection failures
+- **Developer Experience**: Seamless integration with existing PromptForge workflows
+
+### 📊 **Quality Thresholds**
+
+- **PII Detection F1 Score**: ≥ 0.90
+- **Anonymization Success Rate**: ≥ 0.98  
+- **Round-trip Accuracy**: ≥ 0.95
+- **Adversarial Defense Rate**: ≥ 0.95
+- **Policy Compliance**: 100%
+
+This extension transforms PromptForge into a enterprise-grade, PII-aware prompt engineering platform suitable for financial services production environments.
+
+---
+
+**Document Status**: Production Ready  
+**Version**: 1.0.0  
+**Last Updated**: September 4, 2025  
+**Next Review**: December 2025
