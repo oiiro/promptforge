@@ -8,8 +8,7 @@ from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 from enum import Enum
 import langfuse
-from langfuse import Langfuse
-from langfuse.decorators import observe, langfuse_context
+from langfuse import Langfuse, observe
 from langfuse.model import CreateScore
 import structlog
 
@@ -290,9 +289,8 @@ langfuse_observer = LangfuseObserver()
 # Export decorators for direct use
 __all__ = [
     "LangfuseConfig",
-    "LangfuseObserver",
+    "LangfuseObserver", 
     "langfuse_observer",
     "observe",
-    "langfuse_context",
     "ObservabilityLevel"
 ]

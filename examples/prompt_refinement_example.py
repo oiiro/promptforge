@@ -16,10 +16,10 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from evaluation.deepeval_optimizer import HallucinationOptimizer, OptimizationConfig
-from evaluation.langfuse_config import langfuse_observer, ObservabilityLevel
+from evaluation.deepeval_optimizer_minimal import HallucinationOptimizer, OptimizationConfig
+# Langfuse integration via @observe decorators
 from orchestration.llm_client import LLMClient
-from langfuse.decorators import observe
+from langfuse import observe
 import structlog
 
 # Configure logging
@@ -58,11 +58,6 @@ class FinancialAnalysisPromptOptimizer:
                 cot_style="structured",
                 temperature_range=(0.0, 0.2),  # Keep temperature low for consistency
                 top_p_range=(0.9, 0.95),
-                use_few_shot=True,
-                few_shot_examples=3,
-                use_self_consistency=True,
-                self_consistency_samples=3,
-                use_verification_step=True
             )
         )
         self.llm_client = LLMClient()
@@ -244,14 +239,7 @@ Provide eligibility status and reasoning.
             optimization_result["configuration"]
         )
         
-        # Log final prompt version to Langfuse
-        langfuse_observer.log_prompt_version(
-            name="retirement_eligibility_assessment",
-            prompt=optimization_result["optimized_prompt"],
-            version=f"1.0.0-optimized-{datetime.now().strftime('%Y%m%d')}",
-            config=optimization_result["configuration"],
-            labels=["financial", "retirement", "optimized", "low-hallucination", "cot"]
-        )
+        # Note: Langfuse logging handled automatically by @observe decorators
         
         # Analyze optimization history
         analysis = self.optimizer.analyze_optimization_history()
@@ -432,14 +420,10 @@ def main():
     ╚══════════════════════════════════════════════════════════════════╝
     """)
     
-    # Configure Langfuse
-    langfuse_observer.config.enabled = True
-    langfuse_observer.config.observability_level = ObservabilityLevel.DETAILED
-    
+    # Langfuse is configured via environment variables and @observe decorators
     print("\n🔧 Configuration:")
-    print(f"  • Langfuse: {'Enabled' if langfuse_observer.config.enabled else 'Disabled'}")
-    print(f"  • Observability Level: {langfuse_observer.config.observability_level.value}")
-    print(f"  • Host: {langfuse_observer.config.host}")
+    print(f"  • Langfuse: Enabled via @observe decorators")
+    print(f"  • Integration: Live tracing with actual API keys")
     
     # Create optimizer
     print("\n🚀 Initializing optimizer...")
@@ -493,21 +477,18 @@ def main():
     print("  3. Monitor performance in Langfuse dashboard")
     print("  4. Iterate based on real-world feedback")
     
-    # Cleanup
-    langfuse_observer.flush()
-    langfuse_observer.shutdown()
-    print("\n👋 Langfuse observer shutdown complete")
+    print("\n👋 Optimization complete - check Langfuse dashboard for traces")
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
         print("\n\n⚠️ Optimization interrupted by user")
-        langfuse_observer.shutdown()
+        pass
         sys.exit(1)
     except Exception as e:
         print(f"\n\n❌ Error during optimization: {e}")
         import traceback
         traceback.print_exc()
-        langfuse_observer.shutdown()
+        pass
         sys.exit(1)

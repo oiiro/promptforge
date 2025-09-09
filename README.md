@@ -1,19 +1,21 @@
 # PromptForge: Financial Services Grade Prompt Engineering SDLC
 
-**Enhanced with TruLens Evaluation & Monitoring Backbone**
+**Enhanced with Langfuse Observability & Chain-of-Thought Optimization**
 
-A comprehensive, production-ready framework for managing, testing, and deploying prompts in financial services environments with enterprise-grade security, compliance, and observability. Now featuring TruLens v2.2.4 integration for comprehensive pre-deployment evaluation and production monitoring.
+A comprehensive, production-ready framework for managing, testing, and deploying prompts in financial services environments with enterprise-grade security, compliance, and observability. Now featuring Langfuse v2.0+ integration with DeepEval-powered Chain-of-Thought optimization for minimal hallucination and maximum factual accuracy.
 
 ## 🏗️ Architecture Overview
 
 ```
 promptforge/
-├── evaluation/              # 🆕 TruLens Evaluation & Monitoring
-│   ├── trulens_config.py   # TruLens configuration and feedback functions
-│   ├── offline_evaluation.py # Pre-deployment evaluation (golden/adversarial)
-│   └── production_monitoring.py # Real-time production monitoring
-├── setup_promptforge.py    # 🆕 Automated installation and configuration
-├── verify_installation.py  # 🆕 Comprehensive integration testing
+├── evaluation/              # 🆕 Langfuse Observability & CoT Optimization
+│   ├── langfuse_config.py  # Langfuse integration and configuration
+│   ├── deepeval_optimizer_minimal.py # Chain-of-Thought optimization engine
+│   └── deepeval_optimizer_simple.py  # Simplified version with mock metrics
+├── examples/                # 🆕 Working Examples & Demonstrations
+│   └── prompt_refinement_example.py  # Financial analysis CoT optimization
+├── test_working_example.py # 🆕 Comprehensive integration testing (5/5 tests)
+├── setup_langfuse_environment.py # 🆕 Automated Langfuse environment setup
 ├── prompts/                 # Versioned prompt templates and specifications
 │   └── find_capital/
 │       ├── spec.yml        # Requirements and acceptance criteria
@@ -40,7 +42,9 @@ promptforge/
 ├── config/                 # Governance and configuration
 │   └── governance.yml     # Financial services compliance rules
 ├── docs/                   # 🆕 Comprehensive Documentation
-│   └── TRULENS_INTEGRATION.md # Complete TruLens integration guide
+│   ├── PROMPTFORGE_LANGFUSE_INTEGRATION.md # Complete integration guide
+│   ├── MIGRATION_TO_LANGFUSE.md # Step-by-step migration guide
+│   └── LANGFUSE_ARCHITECTURE.md # Technical architecture document
 └── release/                # Version control and deployment
     └── version_control.py  # Blue-green deployments and rollbacks
 ```
@@ -55,11 +59,12 @@ promptforge/
 # Clone or navigate to the project
 cd promptforge
 
-# Run automated setup script (includes TruLens integration)
-python setup_promptforge.py
+# Run automated setup script (includes Langfuse integration)
+python setup_langfuse_environment.py
 
-# Verify installation
-python verify_installation.py
+# Verify installation and run integration tests
+python test_working_example.py
+# Expected: 5/5 tests pass ✅
 ```
 
 ### Manual Setup
@@ -69,11 +74,11 @@ python verify_installation.py
 python3 -m venv venv
 source venv/bin/activate
 
-# Install dependencies (includes TruLens v2.2.4)
+# Install dependencies (includes Langfuse v2.0+)
 pip install -r requirements.txt
 
 # Copy environment configuration
-cp .env.template .env
+cp .env.development .env
 # Edit .env with your API keys
 ```
 
@@ -82,19 +87,22 @@ cp .env.template .env
 Add your LLM provider API keys to `.env`:
 
 ```bash
-# LLM Provider API Keys
-OPENAI_API_KEY=your-openai-api-key
-ANTHROPIC_API_KEY=your-anthropic-api-key
-DEFAULT_LLM_PROVIDER=openai
-DEFAULT_MODEL=gpt-4-turbo-preview
+# LLM Provider API Keys (optional for basic testing)
+OPENAI_API_KEY=your-openai-key-here
+ANTHROPIC_API_KEY=your-anthropic-key-here
+DEFAULT_LLM_PROVIDER=mock
+DEFAULT_MODEL=mock
 
-# 🆕 TruLens Configuration
-TRULENS_DATABASE_URL=sqlite:///trulens_promptforge.db
+# 🆕 Langfuse Configuration (optional for testing)
+LANGFUSE_PUBLIC_KEY=pk-lf-development-key-here
+LANGFUSE_SECRET_KEY=sk-lf-development-key-here
+LANGFUSE_HOST=https://cloud.langfuse.com
+LANGFUSE_ENABLED=false  # Disabled for local testing
 
-# Security & Compliance
-ENABLE_PII_REDACTION=true
-ENABLE_AUDIT_LOGGING=true
-ENABLE_FINANCIAL_COMPLIANCE=true
+# Development Settings
+LOG_LEVEL=INFO
+ENVIRONMENT=development
+ENABLE_MOCK_MODE=true
 ```
 
 ### 🆕 Verification Results
@@ -102,93 +110,104 @@ ENABLE_FINANCIAL_COMPLIANCE=true
 After setup, you should see successful integration:
 
 ```
-VERIFICATION SUMMARY
-✅ PASS - TruLens Imports
-✅ PASS - TruLens Configuration  
-✅ PASS - Production Monitoring
-✅ PASS - Database Connection
-✅ PASS - Dependencies
-⚠️  PARTIAL - Offline Evaluation (requires API keys)
+╔══════════════════════════════════════════════════════════════════╗
+║           PromptForge Working Integration Test                    ║
+║                     Langfuse v2.0                               ║
+╚══════════════════════════════════════════════════════════════════╝
 
-Overall Result: 5/6 tests passed - TruLens integration is mostly functional.
+TEST SUMMARY
+✅ PASS    | Langfuse Basic
+✅ PASS    | Simplified Optimizer  
+✅ PASS    | Chain-of-Thought
+✅ PASS    | End-to-End Workflow
+✅ PASS    | Sample Environment
+
+Results: 5/5 tests passed (100%)
+
+🎉 All tests passed! PromptForge Langfuse integration is working!
 ```
 
-### 3. Run Example Application
+### 3. Run Chain-of-Thought Optimization Example
 
 ```bash
-# 🆕 Run the PII-aware Capital Finder example
-python examples/capital_finder_presidio.py
+# 🆕 Run the financial analysis prompt optimization example
+python examples/prompt_refinement_example.py
 
 # This demonstrates:
-# - Microsoft Presidio PII protection
-# - Policy-based PII handling (REDACT, MASK, HASH, TOKENIZE)
-# - Session management with secure storage
-# - Multi-provider LLM support with fallbacks
-# - Production-grade error handling
-# - Async/await patterns for performance
+# - Chain-of-Thought prompt optimization with structured reasoning
+# - Hallucination reduction techniques (targeting 90%+ accuracy)
+# - Progressive prompt enhancement with verification steps
+# - Langfuse observability and trace collection
+# - Financial services compliance-aware prompting
+# - Iterative improvement with heuristic evaluation
 ```
 
 ### 4. Run Comprehensive Test Suite
 
 ```bash
-# Execute full CI/CD pipeline (includes TruLens evaluations)
+# Execute full CI/CD pipeline (includes Langfuse evaluations)
 ./ci/run_tests.sh
 
-# 🆕 Run verification tests
-python verify_installation.py
+# 🆕 Run comprehensive integration tests
+python test_working_example.py
 
-# Run offline evaluation (requires API keys)
-python -m evaluation.offline_evaluation
-
-# Start production monitoring
-python -m evaluation.production_monitoring
+# Run Chain-of-Thought optimization tests
+python -c "from evaluation.deepeval_optimizer_minimal import HallucinationOptimizer; print('✅ Optimizer ready')"
 
 # Traditional evaluation frameworks
 python -m pytest evals/test_find_capital.py -v
 promptfoo eval
 ```
 
-### 🆕 4. TruLens Evaluation & Monitoring
+### 🆕 5. Langfuse Observability & Chain-of-Thought Optimization
 
-**Pre-Deployment Evaluation:**
+**Chain-of-Thought Optimization:**
 ```python
-from evaluation.offline_evaluation import OfflineEvaluator
-from evaluation.trulens_config import TruLensConfig
+from evaluation.deepeval_optimizer_minimal import HallucinationOptimizer, OptimizationConfig
 
-# Initialize TruLens configuration
-config = TruLensConfig()
-evaluator = OfflineEvaluator()
-
-# Run comprehensive evaluation
-results = evaluator.run_evaluation(dataset, model)
-
-# Check deployment readiness
-if evaluator.meets_deployment_criteria(results):
-    print("✅ Ready for deployment")
-```
-
-**Production Monitoring:**
-```python
-from evaluation.production_monitoring import ProductionMonitor
-
-# Start continuous monitoring
-monitor = ProductionMonitor()
-monitor.start_monitoring()
-
-# Evaluate specific interactions
-result = monitor.evaluate_interaction(
-    prompt="What's the capital of France?",
-    response="Paris"
+# Initialize optimizer configuration
+config = OptimizationConfig(
+    max_iterations=5,
+    target_hallucination_score=0.90,
+    enable_cot=True,
+    cot_style="structured"  # structured, narrative, hybrid
 )
+
+optimizer = HallucinationOptimizer(config)
+
+# Optimize prompt for financial services
+results = optimizer.optimize_prompt(
+    base_prompt="Assess retirement eligibility: {input}",
+    test_cases=[{
+        "input": "Employee: John, Age: 67, Years: 25",
+        "expected_output": "ELIGIBLE - Meets requirements",
+        "context": ["Age 65 OR 20 years qualifies"]
+    }]
+)
+
+print(f"Optimization Results:")
+print(f"• Iterations: {results['iterations']}")
+print(f"• Improvement: {results['improvement']:.3f}")
+print(f"• Hallucination Score: {results['final_scores']['hallucination']:.3f}")
 ```
 
-**6 Feedback Functions Available:**
-- `answer_relevance` - Response relevance to query
-- `toxicity` - Harmful content detection (Detoxify)
-- `conciseness` - Response clarity and conciseness
-- `language_match` - Language consistency validation
-- `financial_compliance` - Financial services regulatory compliance
-- `schema_compliance` - Response structure validation
+**Langfuse Integration:**
+```python
+from langfuse import observe
+from evaluation.langfuse_config import LangfuseConfig
+
+# Automatic observability with decorators
+@observe(name="financial_analysis")
+def analyze_retirement(employee_data: str) -> dict:
+    return {"eligible": True, "confidence": 0.95}
+
+# All function calls automatically traced in Langfuse dashboard
+```
+
+**Available Chain-of-Thought Templates:**
+- `STRUCTURED` - Step-by-step numbered reasoning approach
+- `NARRATIVE` - Natural language reasoning flow
+- `HYBRID` - Structured analysis with systematic verification
 
 ### 5. Start the API Server
 

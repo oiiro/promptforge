@@ -18,7 +18,8 @@ from deepeval.metrics import (
     ContextualRelevancyMetric
 )
 from deepeval.test_case import LLMTestCase
-from langfuse.decorators import observe, langfuse_context
+from langfuse import observe
+from evaluation.langfuse_config import langfuse_observer
 import structlog
 
 logger = structlog.get_logger()
@@ -168,16 +169,19 @@ class HallucinationOptimizer:
         best_score = 0.0
         best_config = {}
         
-        # Log optimization start
-        langfuse_context.update_current_trace(
-            name="prompt_optimization",
-            metadata={
-                "base_prompt_length": len(base_prompt),
-                "test_cases": len(test_cases),
-                "max_iterations": self.config.max_iterations,
-                "optimization_config": self.config.__dict__
-            }
-        )
+        # Log optimization start to Langfuse
+        if langfuse_observer.client:
+            trace_id = langfuse_observer.client.get_current_trace_id()
+            if trace_id:
+                langfuse_observer.client.create_event(
+                    name="optimization_start",
+                    metadata={
+                        "base_prompt_length": len(base_prompt),
+                        "test_cases": len(test_cases),
+                        "max_iterations": self.config.max_iterations,
+                        "optimization_config": self.config.__dict__
+                    }
+                )
         
         for iteration in range(self.config.max_iterations):
             logger.info(f"Optimization iteration {iteration + 1}/{self.config.max_iterations}")
@@ -210,11 +214,12 @@ class HallucinationOptimizer:
             self.iteration_history.append(iteration_data)
             
             # Log iteration results to Langfuse
-            langfuse_context.score_current_trace(
-                name=f"iteration_{iteration + 1}_composite",
-                value=composite_score,
-                comment=f"Scores: {test_results}"
-            )
+            if langfuse_observer.client:
+                langfuse_observer.client.score_current_trace(
+                    name=f"iteration_{iteration + 1}_composite",
+                    value=composite_score,
+                    comment=f"Scores: {test_results}"
+                )
             
             # Update best if improved
             if composite_score > best_score:

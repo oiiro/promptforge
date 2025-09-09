@@ -3,11 +3,11 @@
 PromptForge Setup & Verification Script
 Comprehensive setup and verification for financial services grade prompt engineering SDLC
 
-INCLUDES TRULENS INTEGRATION FIXES:
-- Dashboard NoneType app_id error resolution
-- Proper tuple unpacking for get_records_and_feedback()
-- PromptForge app registration and branding updates
-- Database compatibility verification (TruLens v2.2.4)
+INCLUDES LANGFUSE INTEGRATION:
+- Langfuse v2.0+ observability integration
+- Chain-of-Thought optimization with DeepEval
+- Comprehensive heuristic evaluation system
+- Financial services compliance features
 """
 
 import os
@@ -63,8 +63,10 @@ class PromptForgeSetup:
         required_files = [
             "requirements.txt",
             "orchestration/llm_client.py",
-            "evaluation/trulens_config.py",
-            "guardrails/validators.py"
+            "evaluation/langfuse_config.py",
+            "evaluation/deepeval_optimizer_minimal.py",
+            "examples/prompt_refinement_example.py",
+            "test_working_example.py"
         ]
         
         missing_files = []
@@ -117,14 +119,14 @@ class PromptForgeSetup:
         # Core dependency groups for better error handling
         dependency_groups = [
             ("Core LLM", ["openai>=1.35.0", "anthropic>=0.25.0", "pydantic>=2.7.0", "python-dotenv>=1.0.0", "PyYAML>=6.0.1"]),
-            ("TruLens Evaluation", ["trulens-core>=2.2.4", "trulens-feedback>=2.2.4"]),
+            ("Langfuse Observability", ["langfuse>=2.0.0"]),
+            ("Evaluation Framework", ["deepeval>=0.21.0", "detoxify>=0.5.0"]),
             ("PII Detection", ["presidio-analyzer>=2.2.35", "presidio-anonymizer>=2.2.35", "spacy>=3.7.0"]),
             ("Session Storage", ["redis>=5.0.0"]),
-            ("Additional Evaluation", ["deepeval>=0.21.0", "detoxify>=0.5.0"]),
             ("API Framework", ["fastapi>=0.110.0", "uvicorn>=0.29.0", "httpx>=0.27.0"]),
-            ("Data Processing", ["pandas>=2.2.0", "numpy>=1.26.0"]),
+            ("Data Processing", ["pandas>=2.2.0", "numpy>=1.26.0", "structlog>=24.1.0"]),
             ("Security", ["cryptography>=42.0.0", "passlib[bcrypt]>=1.7.4", "jsonschema>=4.21.0"]),
-            ("Observability", ["opentelemetry-api>=1.36.0", "opentelemetry-sdk>=1.36.0", "opentelemetry-exporter-otlp>=1.36.0", "opentelemetry-instrumentation-requests>=0.46b0", "opentelemetry-instrumentation-fastapi>=0.46b0", "opentelemetry-instrumentation-httpx>=0.46b0", "structlog>=24.1.0"]),
+            ("Observability", ["opentelemetry-api>=1.36.0", "opentelemetry-sdk>=1.36.0", "opentelemetry-exporter-otlp>=1.36.0", "opentelemetry-instrumentation-requests>=0.46b0", "opentelemetry-instrumentation-fastapi>=0.46b0", "opentelemetry-instrumentation-httpx>=0.46b0"]),
             ("Testing", ["pytest>=8.2.0", "pytest-cov>=5.0.0"]),
             ("Development", ["black>=24.3.0", "flake8>=7.0.0", "mypy>=1.9.0"]),
             # Skip Advanced AI packages that may have build issues on Python 3.13
@@ -198,9 +200,11 @@ DEFAULT_LLM_PROVIDER=openai
 OPENAI_API_KEY=your-openai-key-here
 ANTHROPIC_API_KEY=your-anthropic-key-here
 
-# TruLens Configuration
-TRULENS_DATABASE_URL=sqlite:///trulens_promptforge.db
-TRULENS_LOG_LEVEL=INFO
+# Langfuse Configuration (optional for testing)
+LANGFUSE_PUBLIC_KEY=pk-lf-development-key-here
+LANGFUSE_SECRET_KEY=sk-lf-development-key-here
+LANGFUSE_HOST=https://cloud.langfuse.com
+LANGFUSE_ENABLED=false  # Disabled for local testing
 
 # Application Configuration
 ENVIRONMENT=development
@@ -235,22 +239,15 @@ sys.path.insert(0, '.')
 
 results = {}
 
-# Test TruLens imports
+# Test Langfuse imports
 try:
-    from trulens.core import TruSession
-    from trulens.core.feedback import Feedback
-    results['trulens_imports'] = True
-    print("✅ TruLens core imports successful")
+    from langfuse import Langfuse, observe
+    client = Langfuse()  # Will work but show auth warning
+    results['langfuse_imports'] = True
+    print("✅ Langfuse imports successful")
 except Exception as e:
-    results['trulens_imports'] = False
-    print(f"❌ TruLens import error: {e}")
-    # Try legacy import
-    try:
-        import trulens_eval
-        results['trulens_imports'] = True
-        print("✅ TruLens legacy imports successful")
-    except Exception as e2:
-        print(f"❌ TruLens legacy also failed: {e2}")
+    results['langfuse_imports'] = False
+    print(f"❌ Langfuse import error: {e}")
 
 # Test LLM client
 try:
@@ -261,14 +258,15 @@ except Exception as e:
     results['llm_client'] = False
     print(f"LLM client error: {e}")
 
-# Test TruLens configuration
+# Test Langfuse configuration
 try:
-    from evaluation.trulens_config import TruLensConfig
-    config = TruLensConfig()
-    results['trulens_config'] = True
+    from evaluation.langfuse_config import LangfuseConfig
+    config = LangfuseConfig()
+    results['langfuse_config'] = True
+    print("✅ Langfuse configuration successful")
 except Exception as e:
-    results['trulens_config'] = False
-    print(f"TruLens config error: {e}")
+    results['langfuse_config'] = False
+    print(f"❌ Langfuse config error: {e}")
 
 # Test guardrails
 try:
@@ -279,17 +277,20 @@ except Exception as e:
     results['guardrails'] = False
     print(f"Guardrails error: {e}")
 
-# Test evaluation systems
+# Test Chain-of-Thought optimization
 try:
-    from evaluation.offline_evaluation import OfflineEvaluator
-    from evaluation.production_monitoring import ProductionMonitor
-    results['evaluation_systems'] = True
+    from evaluation.deepeval_optimizer_minimal import HallucinationOptimizer, OptimizationConfig
+    config = OptimizationConfig(max_iterations=2)
+    optimizer = HallucinationOptimizer(config)
+    results['cot_optimization'] = True
+    print("✅ Chain-of-Thought optimization successful")
 except Exception as e:
-    results['evaluation_systems'] = False
-    print(f"Evaluation systems error: {e}")
+    results['cot_optimization'] = False
+    print(f"❌ CoT optimization error: {e}")
 
 # Test key dependencies
 dependencies = {
+    'langfuse': 'langfuse',
     'fastapi': 'fastapi',
     'pandas': 'pandas', 
     'numpy': 'numpy',
@@ -300,7 +301,8 @@ dependencies = {
     'redis': 'redis',
     'presidio_analyzer': 'presidio_analyzer',
     'presidio_anonymizer': 'presidio_anonymizer',
-    'spacy': 'spacy'
+    'spacy': 'spacy',
+    'structlog': 'structlog'
 }
 
 # Test OpenTelemetry specifically (since it was a common failure point)
@@ -401,11 +403,11 @@ print(f"VERIFICATION_RESULTS: {results}")
         
         # Core components
         core_components = {
-            'TruLens Imports': verification_results.get('trulens_imports', False),
+            'Langfuse Imports': verification_results.get('langfuse_imports', False),
             'LLM Client': verification_results.get('llm_client', False),
-            'TruLens Configuration': verification_results.get('trulens_config', False),
+            'Langfuse Configuration': verification_results.get('langfuse_config', False),
             'Guardrails System': verification_results.get('guardrails', False),
-            'Evaluation Systems': verification_results.get('evaluation_systems', False)
+            'Chain-of-Thought Optimization': verification_results.get('cot_optimization', False)
         }
         
         logger.info("\n🔧 Core Components:")
@@ -415,6 +417,7 @@ print(f"VERIFICATION_RESULTS: {results}")
         
         # Dependencies
         dependencies = {
+            'Langfuse': verification_results.get('dep_langfuse', False),
             'FastAPI': verification_results.get('dep_fastapi', False),
             'Pandas': verification_results.get('dep_pandas', False),
             'NumPy': verification_results.get('dep_numpy', False),
@@ -422,6 +425,7 @@ print(f"VERIFICATION_RESULTS: {results}")
             'Anthropic': verification_results.get('dep_anthropic', False),
             'DeepEval': verification_results.get('dep_deepeval', False),
             'Detoxify': verification_results.get('dep_detoxify', False),
+            'Structlog': verification_results.get('dep_structlog', False),
             'Redis': verification_results.get('dep_redis', False),
             'Presidio Analyzer': verification_results.get('dep_presidio_analyzer', False),
             'Presidio Anonymizer': verification_results.get('dep_presidio_anonymizer', False),
@@ -462,9 +466,10 @@ print(f"VERIFICATION_RESULTS: {results}")
             logger.info("  🆘 Try running this script again")
         
         logger.info("\n📖 Documentation:")
-        logger.info("  • TruLens Integration: docs/TRULENS_INTEGRATION.md")
-        logger.info("  • API Reference: docs/api_reference.md") 
-        logger.info("  • Security Guide: docs/security_guide.md")
+        logger.info("  • Langfuse Integration: docs/PROMPTFORGE_LANGFUSE_INTEGRATION.md")
+        logger.info("  • Migration Guide: docs/MIGRATION_TO_LANGFUSE.md")
+        logger.info("  • Architecture: docs/LANGFUSE_ARCHITECTURE.md")
+        logger.info("  • Quick Start: QUICKSTART_LANGFUSE.md")
         
         # Save results for future reference
         import datetime
