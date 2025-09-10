@@ -76,8 +76,8 @@ pip install presidio-analyzer presidio-anonymizer
 pip install spacy
 python -m spacy download en_core_web_sm
 
-# Install TruLens for evaluation
-pip install trulens-core>=2.2.4 trulens-feedback>=2.2.4
+# Install Langfuse for observability
+pip install langfuse>=2.0.0
 ```
 
 ## 🔑 Step 3: Configuration Setup
@@ -102,8 +102,8 @@ PRESIDIO_LOG_LEVEL=INFO
 REDIS_URL=redis://localhost:6379/0
 REDIS_PASSWORD=
 
-# TruLens Configuration
-TRULENS_DATABASE_URL=sqlite:///trulens_promptforge.db
+# Langfuse Configuration
+LANGFUSE_HOST=https://cloud.langfuse.com
 TRULENS_LOG_LEVEL=INFO
 
 # Application Configuration
@@ -140,9 +140,9 @@ python3 scripts/health_check.py
 # ==================================================
 # ✅ Virtual environment detected
 # 📋 Testing Core Imports...
-# ✅ TruLens core imports successful
+# ✅ Langfuse imports successful
 # ✅ LLM client initialized - provider: mock
-# ✅ TruLens configuration loaded
+# ✅ Langfuse configuration loaded
 # ✅ Guardrails functional - validation: True
 # ✅ Evaluation systems loaded
 # 📊 Overall Score: 12/13 (92%)
@@ -614,7 +614,7 @@ print(f'Memory: {psutil.virtual_memory().percent}%')
 1. **Custom PII Policies**: Modify `presidio/policies.py` or run `python3 scripts/test_custom_policy.py`
 2. **Enhanced Guardrails**: Extend `guardrails/validators.py`
 3. **Custom Providers**: Add new LLM providers to `orchestration/llm_client.py`
-4. **TruLens Evaluation**: Run `python3 -m evaluation.offline_evaluation`
+4. **Langfuse Tracing**: Traces automatically sent to dashboard
 5. **Performance Analysis**: Use `python3 scripts/performance_benchmark.py` for optimization
 6. **System Health Monitoring**: Regular checks with `python3 scripts/health_check.py`
 
@@ -703,7 +703,7 @@ python3 scripts/test_api_server.py
 
 ### Production Deployment
 1. **Environment Configuration**: Set up production `.env`
-2. **Database Setup**: Configure PostgreSQL for TruLens
+2. **Database Setup**: Configure PostgreSQL for persistence
 3. **Redis Setup**: Production Redis cluster
 4. **Monitoring**: Set up Grafana/Prometheus
 5. **Security**: Enable authentication and HTTPS

@@ -220,7 +220,7 @@ def execute_prompt_with_tracing(prompt: str, model: str):
 **Dashboard Access**:
 - **Cloud Dashboard**: `https://cloud.langfuse.com` - Full analytics
 - **Self-Hosted**: Optional on-premise deployment
-- **Browser Launch**: `./launch_trulens_dashboard.py` - Automated startup
+- **Browser Access**: Navigate to Langfuse dashboard URL
 
 ### Microsoft Presidio PII Protection
 
@@ -246,9 +246,9 @@ def protect_pii(text: str) -> str:
 
 ## Database Architecture
 
-### SQLite Schema (TruLens Managed)
+### SQLite Schema (Application Managed)
 ```sql
--- Core evaluation tables (managed by TruLens)
+-- Core evaluation tables (managed by application)
 CREATE TABLE records (
     record_id TEXT PRIMARY KEY,
     app_id TEXT,
@@ -349,8 +349,9 @@ pip install -r requirements.txt
 # PromptForge API available at: http://localhost:8000
 
 # 4. Dashboard Startup (Terminal 2)  
-./launch_trulens_dashboard.py
-# TruLens Dashboard available at: http://localhost:8501
+# Access Langfuse Dashboard at:
+# Cloud: https://cloud.langfuse.com
+# Self-hosted: Your configured LANGFUSE_HOST
 
 # 5. Development Workflow
 # - Code changes trigger automatic reload (FastAPI hot-reload)

@@ -2,14 +2,14 @@
 
 ## Overview
 
-The Multi-Person Retirement Eligibility API (`/api/v1/retirement-eligibility`) demonstrates advanced PII protection capabilities using Microsoft Presidio integration with TruLens monitoring for multi-person financial scenarios.
+The Multi-Person Retirement Eligibility API (`/api/v1/retirement-eligibility`) demonstrates advanced PII protection capabilities using Microsoft Presidio integration with Langfuse observability for multi-person financial scenarios.
 
 ## 🔧 Technical Implementation
 
 ### Core Features
 - **Multi-Entity Processing**: Handles multiple persons in a single request
 - **PII Protection**: Microsoft Presidio integration with numbered placeholder anonymization
-- **TruLens Monitoring**: Observability and evaluation framework integration
+- **Langfuse Observability**: Comprehensive tracing and monitoring integration
 - **Production-Ready**: Bearer token authentication, comprehensive error handling
 - **Financial Services Grade**: Enterprise security and compliance features
 
@@ -33,7 +33,7 @@ Multi-Person Retirement API Flow:
 │   Placeholders  │    └──────────────────┘    └─────────────────┘
 └─────────────────┘                                     │
          │                                    ┌─────────────────┐
-┌─────────────────┐    ┌──────────────────┐    │  TruLens        │
+┌─────────────────┐    ┌──────────────────┐    │  Langfuse       │
 │   Deanonymization│◀───│  Response        │◀───│  Monitoring     │
 │   & Final       │    │  Processing      │    │  (Optional)     │
 │   Response      │    └──────────────────┘    └─────────────────┘
@@ -57,7 +57,7 @@ Authorization: Bearer demo-token
 {
   "query": "string (min: 10, max: 5000) - Multi-person eligibility query with PII",
   "enable_pii_protection": "boolean (default: true) - Enable Presidio PII anonymization",
-  "enable_monitoring": "boolean (default: true) - Enable TruLens monitoring"
+  "enable_monitoring": "boolean (default: true) - Enable Langfuse tracing"
 }
 ```
 
@@ -81,7 +81,7 @@ Authorization: Bearer demo-token
     "anonymized_entities": ["array - List of placeholder entities used"],
     "request_id": "string - Unique request identifier",
     "processing_time_ms": "float - Total processing time",
-    "trulens_monitoring": "boolean - TruLens monitoring status"
+    "observability_enabled": "boolean - Langfuse tracing status"
   }
 }
 ```
@@ -144,7 +144,7 @@ curl -X POST http://localhost:8000/api/v1/retirement-eligibility \
     ],
     "request_id": "c176bb71-612d-46f7-b3fd-e91540b53f72",
     "processing_time_ms": 15.82,
-    "trulens_monitoring": false
+    "observability_enabled": false
   }
 }
 ```
@@ -179,14 +179,14 @@ This ensures proper anonymization and deanonymization for multi-person scenarios
 - **Audit Trail**: All PII detection and handling events are logged
 - **Configurable Policies**: Custom anonymization rules per entity type
 
-## 📊 TruLens Integration
+## 📊 Langfuse Integration
 
 ### Monitoring Capabilities
 When `enable_monitoring: true`:
 - **PII Detection Scoring**: Evaluates PII detection accuracy
 - **Anonymization Quality**: Measures anonymization effectiveness
 - **Processing Metrics**: Tracks performance and latency
-- **Dashboard Access**: Real-time monitoring via `/api/v1/trulens/dashboard` (requires Bearer token authentication)
+- **Dashboard Access**: Real-time monitoring via Langfuse dashboard (cloud.langfuse.com or self-hosted)
 
 ### Feedback Functions
 1. **PII Detection Feedback**: Scores PII entity detection (0.0-1.0)
@@ -213,7 +213,7 @@ When `enable_monitoring: true`:
 - ✅ Multi-person PII detection and anonymization
 - ✅ Numbered placeholder generation and mapping
 - ✅ Response processing and deanonymization
-- ✅ TruLens monitoring integration (when available)
+- ✅ Langfuse observability integration (when configured)
 - ✅ Error handling and edge cases
 - ✅ Performance metrics and timing
 
@@ -288,7 +288,7 @@ ENVIRONMENT=development                 # Environment (development/production)
 ENABLE_PII_PROTECTION=true             # Enable Presidio PII protection
 PRESIDIO_LOG_LEVEL=INFO                # Presidio logging level
 
-# TruLens Monitoring
+# Langfuse Observability
 ENABLE_TRULENS_MONITORING=true         # Enable TruLens observability
 TRULENS_DATABASE_URL=sqlite:///./trulens.db  # TruLens database
 
@@ -327,7 +327,7 @@ For production deployment:
 ## 📚 Additional Resources
 
 - **Presidio Documentation**: https://microsoft.github.io/presidio/
-- **TruLens Documentation**: https://trulens.org/
+- **Langfuse Documentation**: https://langfuse.com/docs
 - **FastAPI Security**: https://fastapi.tiangolo.com/tutorial/security/
 - **Financial Services Compliance**: See `/config/governance.yml`
 
@@ -339,31 +339,31 @@ For production deployment:
    - **Cause**: Presidio not properly initialized
    - **Solution**: Check spacy model installation: `python -m spacy download en_core_web_sm`
 
-2. **"TruLens monitoring unavailable"**
-   - **Cause**: TruLens import failures or missing OpenAI provider
-   - **Solution**: Install all TruLens dependencies:
+2. **"Langfuse monitoring unavailable"**
+   - **Cause**: Langfuse configuration missing or incorrect
+   - **Solution**: Configure Langfuse credentials:
      ```bash
-     pip install trulens-core trulens-feedback trulens-providers-openai
-     pip install langchain langchain-core langchain-community
-     pip install sqlalchemy alembic
+     export LANGFUSE_PUBLIC_KEY=your_public_key
+     export LANGFUSE_SECRET_KEY=your_secret_key
+     pip install langfuse>=2.0.0
      ```
 
 3. **"Authentication failed"**
    - **Cause**: Missing or invalid Bearer token
    - **Solution**: Include header: `Authorization: Bearer demo-token`
 
-4. **TruLens dashboard 404 Not Found**
-   - **Cause**: Using incorrect URL path
-   - **Solution**: Use correct URL: `/api/v1/trulens/dashboard` (not `/api/trulens/dashboard`)
+4. **Langfuse dashboard not accessible**
+   - **Cause**: Network issues or incorrect credentials
+   - **Solution**: Access Langfuse dashboard directly at https://cloud.langfuse.com
 
-5. **TruLens dashboard 503 Service Unavailable**
-   - **Cause**: TruLens not properly initialized or database setup hanging
-   - **Solution**: Alternative access via native dashboard:
+5. **Missing traces in Langfuse**
+   - **Cause**: Langfuse client not initialized or flushing issues
+   - **Solution**: Verify Langfuse configuration:
      ```bash
      python -c "
-     from trulens.core import TruSession
-     session = TruSession()
-     session.run_dashboard(port=8501)
+     from langfuse import Langfuse
+     client = Langfuse()
+     client.flush()  # Force send pending traces
      "
      ```
 
@@ -388,8 +388,8 @@ curl http://localhost:8000/health
 # Verify authentication
 curl -H "Authorization: Bearer demo-token" http://localhost:8000/api/v1/metrics
 
-# Test TruLens dashboard access (correct URL)
-curl -H "Authorization: Bearer demo-token" http://localhost:8000/api/v1/trulens/dashboard
+# Test API metrics endpoint
+curl -H "Authorization: Bearer demo-token" http://localhost:8000/api/v1/metrics
 
 # Test endpoint with minimal data
 curl -X POST http://localhost:8000/api/v1/retirement-eligibility \
@@ -397,13 +397,14 @@ curl -X POST http://localhost:8000/api/v1/retirement-eligibility \
   -H "Content-Type: application/json" \
   -d '{"query": "Test eligibility for John age 65"}'
 
-# Start native TruLens dashboard (alternative access method)
+# Check Langfuse configuration
 python -c "
-from trulens.core import TruSession
-session = TruSession()
-session.run_dashboard(port=8501)
+from langfuse import Langfuse
+client = Langfuse()
+print('Langfuse client initialized successfully')
+client.flush()
 "
-# Then access: http://localhost:8501
+# Access dashboard at: https://cloud.langfuse.com
 ```
 
 ---
