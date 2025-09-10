@@ -14,7 +14,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass, asdict
 
 # PromptForge imports
-from orchestration.trulens_pii_integration import PIIPromptEvaluationPipeline
+from evaluation.langfuse_config import LangfuseConfig
 from presidio.quality_checks import PIIQualityEvaluator, PIITestResult
 from presidio.middleware import PresidioMiddleware
 from monitoring.pii_metrics import PIIMetrics, PIIIncident, PIIIncidentSeverity

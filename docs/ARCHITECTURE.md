@@ -16,34 +16,34 @@ This document provides a comprehensive overview of PromptForge's architecture, t
 
 ## System Overview
 
-PromptForge is a comprehensive platform for developing, evaluating, and monitoring AI prompts in financial services environments. The platform consists of two primary services connected through a shared database architecture:
+PromptForge is a comprehensive platform for developing, evaluating, and monitoring AI prompts in financial services environments. The platform integrates with Langfuse for observability and DeepEval for optimization:
 
 ```
 ┌─────────────────────┐    ┌─────────────────────────┐
-│   PromptForge API   │    │   TruLens Dashboard     │
-│   (Port 8000)      │    │   (Port 8501)          │
+│   PromptForge API   │    │   Langfuse Dashboard    │
+│   (Port 8000)      │    │   (Cloud/Self-hosted)   │
 │                     │    │                         │
-│ • FastAPI Server    │    │ • Streamlit UI          │
-│ • Prompt Execution  │    │ • Evaluation Metrics    │
-│ • PII Protection    │    │ • Performance Monitoring│
-│ • Security Features │    │ • Visual Analytics      │
+│ • FastAPI Server    │    │ • Trace Analytics       │
+│ • Prompt Execution  │    │ • Performance Metrics   │
+│ • PII Protection    │    │ • Cost Tracking         │
+│ • Security Features │    │ • A/B Testing           │
 └─────────┬───────────┘    └─────────┬───────────────┘
           │                          │
           └──────────┬─────────────────┘
                      │
            ┌─────────▼─────────┐
-           │   Shared Database │
-           │   (default.sqlite) │
+           │   Local Storage   │
+           │   (SQLite + Logs) │
            │                   │
-           │ • Evaluation Data │
-           │ • Session Records │
-           │ • Performance Logs│
-           │ • Feedback Traces │
+           │ • Prompt Registry │
+           │ • Team Config     │
+           │ • Audit Logs     │
+           │ • Cache Data     │
            └───────────────────┘
 ```
 
 ### Key Benefits
-- **Real-time Monitoring**: TruLens dashboard shows live evaluation data from API executions
+- **Real-time Monitoring**: Langfuse provides live tracing and metrics for all prompt executions
 - **Enterprise Security**: PII protection, security scanning, structured logging
 - **Financial Compliance**: SOC 2 Type II ready with comprehensive audit trails
 - **Developer Experience**: Hot-reload development, comprehensive documentation
@@ -55,15 +55,18 @@ PromptForge is a comprehensive platform for developing, evaluating, and monitori
 **Location**: `orchestration/app.py`
 
 ```python
-# Core FastAPI application with integrated TruLens session
-from trulens.core import TruSession
+# Core FastAPI application with integrated Langfuse
+from langfuse import Langfuse
+from evaluation.langfuse_config import LangfuseConfig
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize shared TruLens session on startup
-    app.state.tru_session = TruSession()  # Connects to default.sqlite
+    # Initialize Langfuse client on startup
+    config = LangfuseConfig()
+    app.state.langfuse = config.client
     yield
     # Cleanup on shutdown
+    app.state.langfuse.flush()
 
 app = FastAPI(lifespan=lifespan)
 ```
@@ -73,30 +76,30 @@ app = FastAPI(lifespan=lifespan)
 - Microsoft Presidio PII protection integration
 - Security validation and rate limiting
 - OpenTelemetry distributed tracing
-- Real-time evaluation data collection via TruLens
+- Real-time observability via Langfuse
 - Structured logging with compliance features
 
 **Key Endpoints**:
-- `/api/v1/prompt/execute` - Execute prompts with evaluation
-- `/api/v1/trulens/dashboard` - Dashboard access proxy
+- `/api/v1/prompt/execute` - Execute prompts with tracing
+- `/api/v1/metrics` - Retrieve performance metrics
 - `/api/v1/health` - Health check and system status
 - `/docs` - Interactive API documentation
 
-### TruLens Dashboard Server (Port 8501)
-**Location**: `launch_trulens_dashboard.py`
+### Langfuse Observability Platform
+**Access**: Cloud (https://cloud.langfuse.com) or Self-hosted
 
 ```python
-# Shared database connection - same SQLite instance
-from trulens.core import TruSession
-from trulens.dashboard.run import run_dashboard
+# Langfuse integration with decorators
+from langfuse import observe
 
-def launch_trulens_dashboard():
-    session = TruSession()  # Connects to SAME default.sqlite
-    run_dashboard(session, port=8501)
+@observe(name="prompt_execution")
+def execute_prompt(prompt: str, variables: dict):
+    # Automatic tracing of execution
+    return llm_client.generate(prompt, variables)
 ```
 
-**Primary Responsibilities**:
-- Streamlit-based web interface for evaluation metrics
+**Primary Capabilities**:
+- Web-based dashboard for trace analytics
 - Real-time visualization of prompt performance
 - Historical data analysis and trends
 - Feedback collection and annotation
@@ -117,14 +120,14 @@ def launch_trulens_dashboard():
 │                    Application Layer                    │
 ├─────────────────────────────────────────────────────────┤
 │ FastAPI 0.110.0+     │ Web framework & API endpoints    │
-│ Streamlit (TruLens)  │ Dashboard UI framework           │
+│ Rich CLI             │ Terminal UI framework            │
 │ Uvicorn 0.29.0+      │ ASGI server implementation       │
 └─────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────┐
 │                   Evaluation Layer                     │
 ├─────────────────────────────────────────────────────────┤
-│ TruLens 2.2.4+       │ Primary evaluation framework     │
+│ Langfuse 2.0+        │ Primary observability platform   │
 │ DeepEval 0.21.0+     │ Secondary evaluation metrics     │
 │ Detoxify 0.5.0+      │ Toxicity detection               │
 └─────────────────────────────────────────────────────────┘
@@ -151,7 +154,7 @@ def launch_trulens_dashboard():
 # LLM Provider Integration
 openai>=1.35.0          # OpenAI GPT models
 anthropic>=0.25.0       # Claude models
-langchain>=0.3.27       # LLM orchestration (required for TruLens)
+langchain>=0.3.27       # LLM orchestration framework
 
 # Data Processing Pipeline
 pandas>=2.2.0           # Data manipulation
@@ -166,54 +169,57 @@ pytest>=8.2.0           # Testing framework
 
 ## Service Integration
 
-### Database-Mediated Architecture
+### Observability Architecture
 
-The core integration pattern uses a shared SQLite database (`default.sqlite`) to enable real-time communication between services:
+The platform integrates with Langfuse for comprehensive observability and tracing:
 
 ```python
-# Both services connect to the same database instance
+# Langfuse client initialization
 # Application Server (orchestration/app.py)
-app.state.tru_session = TruSession()  # → default.sqlite
+from langfuse import Langfuse
 
-# Dashboard Server (launch_trulens_dashboard.py)  
-session = TruSession()                # → default.sqlite
-run_dashboard(session, port=8501)
+app.state.langfuse = Langfuse(
+    public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
+    secret_key=os.getenv("LANGFUSE_SECRET_KEY")
+)
 ```
 
 **Data Flow Pattern**:
 1. **API Execution**: User calls `/api/v1/prompt/execute`
-2. **Evaluation Collection**: TruLens records metrics to `default.sqlite`
-3. **Real-time Display**: Dashboard automatically refreshes from same database
-4. **Historical Analysis**: All evaluation data persists for trend analysis
+2. **Trace Collection**: Langfuse records execution traces
+3. **Real-time Display**: Cloud dashboard shows live metrics
+4. **Historical Analysis**: All traces persist for analysis
 
-### TruLens Integration Details
+### Langfuse Integration Details
 
-**Evaluation Pipeline**:
+**Observability Pipeline**:
 ```python
-# Automatic evaluation recording during prompt execution
-from trulens.providers.openai import TruOpenAI
+# Automatic tracing with decorators
+from langfuse import observe
 
-def execute_prompt_with_evaluation(prompt: str, model: str):
-    # TruLens automatically captures:
+@observe(name="prompt_execution")
+def execute_prompt_with_tracing(prompt: str, model: str):
+    # Langfuse automatically captures:
     # - Latency metrics
-    # - Token usage
-    # - Response quality scores
-    # - Error rates
-    # - Custom feedback metrics
+    # - Token usage and costs
+    # - Input/output pairs
+    # - Error traces
+    # - Custom metadata
     
-    tru_openai = TruOpenAI(
-        session=app.state.tru_session,  # Shared session
-        model_engine=model
+    trace = app.state.langfuse.trace(
+        name="prompt_execution",
+        metadata={"model": model}
     )
     
-    # Execution is automatically logged to shared database
-    response = tru_openai.generate(prompt)
+    # Execution is automatically traced
+    response = llm_client.generate(prompt)
+    trace.end(output=response)
     return response
 ```
 
-**Dashboard Access Patterns**:
-- **Direct Access**: `http://localhost:8501` - Native TruLens interface
-- **API Proxy**: `/api/v1/trulens/dashboard` - Integrated access
+**Dashboard Access**:
+- **Cloud Dashboard**: `https://cloud.langfuse.com` - Full analytics
+- **Self-Hosted**: Optional on-premise deployment
 - **Browser Launch**: `./launch_trulens_dashboard.py` - Automated startup
 
 ### Microsoft Presidio PII Protection

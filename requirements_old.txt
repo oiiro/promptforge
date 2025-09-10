@@ -95,7 +95,7 @@ detoxify>=0.5.0
 # =============================================================================
 # Uncomment as needed for specific use cases
 
-# LangChain integration (required for TruLens OpenAI provider)
+# LangChain integration for LLM orchestration
 langchain>=0.3.27
 langchain-core>=0.3.75
 langchain-community>=0.3.29
@@ -104,7 +104,7 @@ langchain-community>=0.3.29
 # rouge-score>=0.1.2
 # bert-score>=0.3.13
 
-# Database support (required for TruLens monitoring)
+# Database support for persistence and caching
 sqlalchemy>=2.0.0
 alembic>=1.12.0
 
