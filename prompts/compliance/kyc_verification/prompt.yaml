@@ -1,0 +1,319 @@
+metadata:
+  name: kyc_customer_verification
+  team: compliance
+  description: "KYC customer verification with regulatory compliance for financial onboarding"
+  created: "2024-01-09T16:00:00Z"
+  version: "3.0.1"
+  status: production
+  tags:
+    - kyc
+    - compliance
+    - customer-verification
+    - regulatory
+    - onboarding
+  owner: sarah.jones@company.com
+  reviewers:
+    - mike.brown@company.com
+    - lisa.garcia@company.com
+
+prompt:
+  template: |
+    You are a KYC compliance specialist responsible for customer verification processes.
+    Conduct a comprehensive Know Your Customer (KYC) analysis following regulatory requirements.
+    
+    ## Customer Information:
+    {{ customer_data }}
+    
+    ## Document Analysis:
+    {{ document_data }}
+    
+    ## KYC Verification Process:
+    
+    ### Step 1: Identity Verification
+    Systematically verify customer identity:
+    
+    1. **Document Authentication**
+       - Verify government-issued photo ID authenticity
+       - Check document expiration dates
+       - Validate document security features
+       - Confirm document format compliance
+    
+    2. **Personal Information Validation**
+       - Full legal name verification
+       - Date of birth confirmation
+       - Address verification (utility bill, bank statement)
+       - Phone number and email validation
+    
+    3. **Identity Cross-Reference**
+       - Compare information across all provided documents
+       - Flag any discrepancies for manual review
+       - Verify consistency in personal details
+    
+    ### Step 2: Risk Assessment
+    Evaluate customer risk profile:
+    
+    4. **Geographic Risk Analysis**
+       - Country of residence risk rating
+       - Politically Exposed Person (PEP) screening
+       - High-risk jurisdiction identification
+       - Sanctions list screening (OFAC, UN, EU)
+    
+    5. **Occupation and Income Verification**
+       - Employment status confirmation
+       - Income source verification
+       - Business ownership screening
+       - Professional license validation (if applicable)
+    
+    6. **Transaction Pattern Analysis**
+       - Expected transaction volumes
+       - Anticipated account usage patterns
+       - Source of funds documentation
+       - Wealth source verification
+    
+    ### Step 3: Regulatory Compliance Check
+    Ensure full regulatory compliance:
+    
+    7. **AML Screening**
+       - Anti-Money Laundering database checks
+       - Adverse media screening
+       - Criminal background verification
+       - Financial crime history review
+    
+    8. **Sanctions and Watch Lists**
+       - OFAC Specially Designated Nationals (SDN) list
+       - UN Security Council Consolidated List
+       - EU Financial Sanctions Database
+       - Country-specific watch lists
+    
+    9. **Enhanced Due Diligence (EDD) Triggers**
+       - High-risk customer indicators
+       - Large transaction thresholds
+       - Complex ownership structures
+       - Unusual business relationships
+    
+    ### Step 4: Documentation Requirements
+    Verify completeness:
+    
+    10. **Required Documents Checklist**
+        - ✓ Government-issued photo ID
+        - ✓ Proof of address (< 90 days)
+        - ✓ Social Security Number/Tax ID
+        - ✓ Employment verification
+        - ✓ Source of funds documentation
+        - ✓ Beneficial ownership disclosure (if entity)
+    
+    ### Step 5: Decision Matrix
+    Make verification determination:
+    
+    11. **Verification Status Options**
+        - **APPROVED**: All requirements met, low risk profile
+        - **APPROVED WITH CONDITIONS**: Minor issues, additional monitoring
+        - **PENDING**: Missing documentation, requires follow-up
+        - **REJECTED**: Failed verification, compliance concerns
+        - **ESCALATED**: Complex case requiring senior review
+    
+    12. **Risk Rating Assignment**
+        - **LOW RISK**: Standard monitoring
+        - **MEDIUM RISK**: Enhanced monitoring
+        - **HIGH RISK**: Continuous monitoring and EDD
+    
+    ## Regulatory Requirements:
+    This verification must comply with:
+    - Bank Secrecy Act (BSA)
+    - USA PATRIOT Act
+    - Customer Identification Program (CIP) requirements
+    - FinCEN regulations
+    - OFAC compliance requirements
+    - State-specific money transmission laws
+    
+    ## Required Disclosures:
+    - Customer information is collected under federal law requirements
+    - Information may be shared with regulatory authorities
+    - Verification is required before account activation
+    - Additional documentation may be requested
+    - Processing time: 1-5 business days for standard cases
+    
+    ## Privacy Notice:
+    Customer data is protected under applicable privacy laws and company policy.
+    Information is used solely for compliance and verification purposes.
+    
+    ## Output Format:
+    Provide structured verification results:
+    
+    ```json
+    {
+      "verification_status": "APPROVED|APPROVED_WITH_CONDITIONS|PENDING|REJECTED|ESCALATED",
+      "risk_rating": "LOW|MEDIUM|HIGH",
+      "customer_id": "system_generated",
+      "verification_date": "ISO_8601_timestamp",
+      "documents_verified": {
+        "photo_id": "status",
+        "address_proof": "status",
+        "ssn_verification": "status",
+        "employment_verification": "status"
+      },
+      "screening_results": {
+        "sanctions_clear": true/false,
+        "pep_status": "none|low|medium|high",
+        "adverse_media": "clear|potential_match|confirmed_match",
+        "aml_risk_score": "0-100"
+      },
+      "required_actions": [
+        "list of any required follow-up actions"
+      ],
+      "compliance_notes": "detailed reasoning for decision",
+      "next_review_date": "ISO_8601_date",
+      "processed_by": "system_automated",
+      "regulatory_flags": [
+        "any regulatory concerns"
+      ]
+    }
+    ```
+    
+    ## Critical Compliance Notes:
+    - All decisions must be documented with clear reasoning
+    - Rejected applications require detailed justification
+    - High-risk approvals need supervisory review
+    - Suspicious activity must be flagged for SAR consideration
+    - Customer data retention follows regulatory schedules
+    
+    Ensure all analysis follows the step-by-step methodology and includes appropriate regulatory disclosures.
+  
+  variables:
+    customer_data:
+      type: object
+      required: true
+      description: "Customer personal and financial information"
+      schema:
+        type: object
+        properties:
+          personal_info:
+            type: object
+            properties:
+              full_name: {type: string}
+              date_of_birth: {type: string}
+              ssn: {type: string}
+              address: {type: object}
+              phone: {type: string}
+              email: {type: string}
+          financial_info:
+            type: object
+            properties:
+              employment_status: {type: string}
+              employer: {type: string}
+              annual_income: {type: number}
+              source_of_funds: {type: string}
+          business_info:
+            type: object
+            required: false
+            properties:
+              business_name: {type: string}
+              business_type: {type: string}
+              ownership_percentage: {type: number}
+    
+    document_data:
+      type: object
+      required: true
+      description: "Submitted identity and verification documents"
+      schema:
+        type: object
+        properties:
+          identity_documents:
+            type: array
+            items:
+              type: object
+              properties:
+                document_type: {type: string}
+                document_number: {type: string}
+                expiration_date: {type: string}
+                issuing_authority: {type: string}
+          address_documents:
+            type: array
+            items:
+              type: object
+              properties:
+                document_type: {type: string}
+                document_date: {type: string}
+                address_on_document: {type: string}
+  
+  parameters:
+    temperature: 0.0  # Maximum consistency for compliance decisions
+    max_tokens: 2500
+    model: "gpt-4-turbo"
+    top_p: 0.90
+
+evaluation:
+  metrics:
+    hallucination_threshold: 0.99  # Highest standards for compliance
+    accuracy_threshold: 0.98
+    faithfulness_threshold: 0.97
+    compliance_required: true
+    pii_detection_required: true
+    regulatory_completeness: 0.99  # Custom metric for regulatory requirements
+  
+  test_suite: "tests/"
+  custom_rules: "evaluations/kyc_compliance_validator.py"
+  
+  benchmarks:
+    - name: "regulatory_compliance"
+      description: "Ensures all regulatory requirements are addressed"
+      threshold: 1.0
+    - name: "decision_accuracy"
+      description: "Validates KYC approval/rejection decisions"
+      threshold: 0.95
+    - name: "pii_protection"
+      description: "Verifies PII is properly handled and not exposed"
+      threshold: 1.0
+    - name: "documentation_completeness"
+      description: "Confirms all required documentation is checked"
+      threshold: 0.98
+
+deployment:
+  environments:
+    development:
+      auto_deploy: false  # Manual deployment even in dev for compliance
+      approval_required: ["compliance_lead"]
+      monitoring_level: "comprehensive"
+    staging:
+      auto_deploy: false
+      approval_required: ["compliance_lead", "platform_team"]
+      monitoring_level: "comprehensive"
+    production:
+      auto_deploy: false
+      approval_required: ["compliance_lead", "compliance_officer", "platform_lead"]
+      monitoring_level: "maximum"
+      
+  rollback:
+    auto_rollback_on_error_rate: 0.01  # Very sensitive
+    manual_rollback_approvers: ["compliance_lead", "platform_team"]
+    emergency_contacts: ["compliance_officer", "chief_risk_officer"]
+
+monitoring:
+  langfuse:
+    enabled: true
+    trace_sampling: 1.0  # Full tracing for compliance
+    pii_redaction: true
+    score_thresholds:
+      accuracy: 0.98
+      latency_p95: 3000  # Allow more time for compliance processing
+  
+  alerts:
+    error_rate_threshold: 0.01
+    latency_p95_threshold: 2500
+    accuracy_threshold: 0.97
+    pii_exposure_alert: true
+    
+  dashboards:
+    - name: "compliance_team_performance"
+      url: "https://company.grafana.com/compliance-prompts"
+    - name: "kyc_processing_metrics"
+      url: "https://company.grafana.com/kyc-metrics"
+    - name: "regulatory_audit_trail"
+      url: "https://company.grafana.com/audit-trail"
+
+audit:
+  retention_years: 7  # Regulatory requirement
+  audit_log_required: true
+  change_approval_required: true
+  version_control_mandatory: true
+  access_logging: true

@@ -1,0 +1,145 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2024-01-09T16:00:00Z",
+  "prompts": {
+    "risk/portfolio_analysis": {
+      "name": "Portfolio Risk Analysis",
+      "team": "risk",
+      "current_version": "2.1.0",
+      "status": "production",
+      "created": "2023-06-15T10:00:00Z",
+      "updated": "2024-01-08T14:30:00Z",
+      "tags": ["financial", "risk-assessment", "var-calculation"],
+      "dependencies": [],
+      "metrics": {
+        "hallucination_score": 0.98,
+        "accuracy": 0.97,
+        "compliance": true,
+        "average_latency_ms": 450
+      }
+    },
+    "risk/credit_scoring": {
+      "name": "Credit Risk Scoring",
+      "team": "risk",
+      "current_version": "1.3.0",
+      "status": "production",
+      "created": "2023-08-20T09:00:00Z",
+      "updated": "2024-01-05T11:00:00Z",
+      "tags": ["credit", "risk-assessment", "scoring"],
+      "dependencies": ["shared/customer_data_extraction"],
+      "metrics": {
+        "hallucination_score": 0.97,
+        "accuracy": 0.98,
+        "compliance": true,
+        "average_latency_ms": 320
+      }
+    },
+    "compliance/kyc_verification": {
+      "name": "KYC Verification",
+      "team": "compliance",
+      "current_version": "3.0.1",
+      "status": "production",
+      "created": "2023-04-10T08:00:00Z",
+      "updated": "2024-01-07T16:00:00Z",
+      "tags": ["kyc", "compliance", "verification"],
+      "dependencies": ["shared/identity_extraction", "shared/document_analysis"],
+      "metrics": {
+        "hallucination_score": 0.99,
+        "accuracy": 0.99,
+        "compliance": true,
+        "average_latency_ms": 680
+      }
+    },
+    "compliance/aml_screening": {
+      "name": "AML Screening",
+      "team": "compliance",
+      "current_version": "2.5.0",
+      "status": "production",
+      "created": "2023-05-22T10:30:00Z",
+      "updated": "2024-01-06T13:45:00Z",
+      "tags": ["aml", "compliance", "screening", "sanctions"],
+      "dependencies": ["compliance/kyc_verification"],
+      "metrics": {
+        "hallucination_score": 0.99,
+        "accuracy": 0.98,
+        "compliance": true,
+        "average_latency_ms": 520
+      }
+    },
+    "trading/market_analysis": {
+      "name": "Market Analysis",
+      "team": "trading",
+      "current_version": "1.8.0",
+      "status": "staging",
+      "created": "2023-07-01T09:00:00Z",
+      "updated": "2024-01-09T10:00:00Z",
+      "tags": ["trading", "market-analysis", "technical-analysis"],
+      "dependencies": ["shared/market_data_extraction"],
+      "metrics": {
+        "hallucination_score": 0.96,
+        "accuracy": 0.94,
+        "compliance": true,
+        "average_latency_ms": 890
+      }
+    },
+    "customer_service/account_inquiry": {
+      "name": "Account Inquiry Handler",
+      "team": "customer_service",
+      "current_version": "4.2.0",
+      "status": "production",
+      "created": "2023-03-15T08:00:00Z",
+      "updated": "2024-01-04T14:00:00Z",
+      "tags": ["customer-service", "inquiry", "account"],
+      "dependencies": ["shared/customer_data_extraction"],
+      "metrics": {
+        "hallucination_score": 0.95,
+        "accuracy": 0.96,
+        "compliance": true,
+        "average_latency_ms": 280
+      }
+    },
+    "shared/customer_data_extraction": {
+      "name": "Customer Data Extraction",
+      "team": "platform",
+      "current_version": "2.0.0",
+      "status": "production",
+      "created": "2023-02-01T10:00:00Z",
+      "updated": "2023-12-15T09:00:00Z",
+      "tags": ["shared", "extraction", "customer-data"],
+      "dependencies": [],
+      "metrics": {
+        "hallucination_score": 0.98,
+        "accuracy": 0.97,
+        "compliance": true,
+        "average_latency_ms": 150
+      }
+    }
+  },
+  "teams": {
+    "risk": {
+      "prompts_count": 2,
+      "active_versions": 2,
+      "staging_versions": 0
+    },
+    "compliance": {
+      "prompts_count": 2,
+      "active_versions": 2,
+      "staging_versions": 0
+    },
+    "trading": {
+      "prompts_count": 1,
+      "active_versions": 0,
+      "staging_versions": 1
+    },
+    "customer_service": {
+      "prompts_count": 1,
+      "active_versions": 1,
+      "staging_versions": 0
+    },
+    "platform": {
+      "prompts_count": 1,
+      "active_versions": 1,
+      "staging_versions": 0
+    }
+  }
+}

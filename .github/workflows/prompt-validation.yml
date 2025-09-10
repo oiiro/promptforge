@@ -1,0 +1,407 @@
+name: Prompt Validation Pipeline
+
+on:
+  pull_request:
+    paths:
+      - 'prompts/**'
+      - 'evaluation/**'
+      - 'tests/**'
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'prompts/**'
+
+env:
+  PYTHON_VERSION: '3.11'
+  LANGFUSE_ENABLED: 'true'
+
+jobs:
+  identify-changes:
+    name: Identify Changed Prompts
+    runs-on: ubuntu-latest
+    outputs:
+      prompts: ${{ steps.changes.outputs.prompts }}
+      teams: ${{ steps.changes.outputs.teams }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Identify changed prompts
+        id: changes
+        run: |
+          # Get changed files
+          CHANGED_FILES=$(git diff --name-only origin/main...HEAD | grep '^prompts/' | grep -v '^prompts/_' || true)
+          
+          # Extract unique prompts
+          PROMPTS=$(echo "$CHANGED_FILES" | cut -d'/' -f2,3 | sort -u | jq -R -s -c 'split("\n")[:-1]')
+          echo "prompts=$PROMPTS" >> $GITHUB_OUTPUT
+          
+          # Extract unique teams
+          TEAMS=$(echo "$CHANGED_FILES" | cut -d'/' -f2 | sort -u | jq -R -s -c 'split("\n")[:-1]')
+          echo "teams=$TEAMS" >> $GITHUB_OUTPUT
+          
+          echo "Changed prompts: $PROMPTS"
+          echo "Affected teams: $TEAMS"
+
+  validate-structure:
+    name: Validate Prompt Structure
+    runs-on: ubuntu-latest
+    needs: identify-changes
+    if: needs.identify-changes.outputs.prompts != '[]'
+    strategy:
+      matrix:
+        prompt: ${{ fromJson(needs.identify-changes.outputs.prompts) }}
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Validate prompt structure
+        run: |
+          PROMPT_PATH="prompts/${{ matrix.prompt }}"
+          
+          # Check required files exist
+          if [ ! -f "$PROMPT_PATH/prompt.yaml" ]; then
+            echo "❌ Missing prompt.yaml in $PROMPT_PATH"
+            exit 1
+          fi
+          
+          # Validate YAML structure
+          python -c "
+          import yaml
+          import sys
+          
+          with open('$PROMPT_PATH/prompt.yaml') as f:
+              config = yaml.safe_load(f)
+          
+          required_fields = ['metadata', 'prompt', 'evaluation']
+          missing = [f for f in required_fields if f not in config]
+          
+          if missing:
+              print(f'❌ Missing required fields: {missing}')
+              sys.exit(1)
+          
+          print('✅ Prompt structure valid')
+          "
+
+  run-tests:
+    name: Run Prompt Tests
+    runs-on: ubuntu-latest
+    needs: [identify-changes, validate-structure]
+    if: needs.identify-changes.outputs.prompts != '[]'
+    strategy:
+      matrix:
+        prompt: ${{ fromJson(needs.identify-changes.outputs.prompts) }}
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+      
+      - name: Run unit tests
+        run: |
+          PROMPT_PATH="prompts/${{ matrix.prompt }}"
+          TEST_PATH="$PROMPT_PATH/tests"
+          
+          if [ -d "$TEST_PATH" ]; then
+            pytest "$TEST_PATH" -v --cov --cov-report=xml
+          else
+            echo "⚠️ No tests found for ${{ matrix.prompt }}"
+          fi
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: prompt-tests
+          name: ${{ matrix.prompt }}
+
+  evaluate-metrics:
+    name: Evaluate Prompt Metrics
+    runs-on: ubuntu-latest
+    needs: [identify-changes, run-tests]
+    if: needs.identify-changes.outputs.prompts != '[]'
+    strategy:
+      matrix:
+        prompt: ${{ fromJson(needs.identify-changes.outputs.prompts) }}
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install PromptForge
+        run: |
+          pip install -r requirements.txt
+          pip install -e .
+      
+      - name: Run evaluation
+        env:
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          # Extract team and prompt name
+          TEAM=$(echo "${{ matrix.prompt }}" | cut -d'/' -f1)
+          PROMPT_NAME=$(echo "${{ matrix.prompt }}" | cut -d'/' -f2)
+          
+          # Run evaluation
+          python -c "
+          from sdk.python.promptforge.client import PromptForgeClient
+          import json
+          
+          client = PromptForgeClient(team='$TEAM')
+          prompt = client.get_prompt('$PROMPT_NAME')
+          
+          # Load test data if available
+          test_data_path = f'prompts/${{ matrix.prompt }}/tests/test_data.json'
+          test_data = None
+          try:
+              with open(test_data_path) as f:
+                  test_data = json.load(f)
+          except:
+              pass
+          
+          # Run evaluation
+          results = client.test_prompt(prompt, test_data)
+          
+          # Save results
+          with open('evaluation_results.json', 'w') as f:
+              json.dump(results, f, indent=2)
+          
+          # Check if passed
+          if not results['passed']:
+              print(f'❌ Evaluation failed for ${{ matrix.prompt }}')
+              print(f'Results: {results}')
+              exit(1)
+          
+          print(f'✅ Evaluation passed for ${{ matrix.prompt }}')
+          "
+      
+      - name: Upload evaluation results
+        uses: actions/upload-artifact@v3
+        with:
+          name: evaluation-${{ matrix.prompt }}
+          path: evaluation_results.json
+
+  compliance-check:
+    name: Financial Compliance Check
+    runs-on: ubuntu-latest
+    needs: [identify-changes, evaluate-metrics]
+    if: needs.identify-changes.outputs.prompts != '[]'
+    strategy:
+      matrix:
+        prompt: ${{ fromJson(needs.identify-changes.outputs.prompts) }}
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      
+      - name: Run compliance checks
+        run: |
+          python -c "
+          from evaluation.financial.compliance_rules import FinancialComplianceEvaluator
+          import yaml
+          
+          # Load prompt
+          with open('prompts/${{ matrix.prompt }}/prompt.yaml') as f:
+              config = yaml.safe_load(f)
+          
+          template = config['prompt']['template']
+          
+          # Run compliance check
+          evaluator = FinancialComplianceEvaluator()
+          results = evaluator.evaluate(template)
+          
+          if not results['compliant']:
+              print(f'❌ Compliance check failed for ${{ matrix.prompt }}')
+              for violation in results['violations']:
+                  print(f'  - {violation.level.value}: {violation.message}')
+              exit(1)
+          
+          print(f'✅ Compliance check passed for ${{ matrix.prompt }}')
+          print(f'  Score: {results[\"overall_score\"]:.2%}')
+          "
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: identify-changes
+    if: needs.identify-changes.outputs.prompts != '[]'
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Check for secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./prompts
+      
+      - name: Check for PII patterns
+        run: |
+          # Simple PII pattern check
+          if grep -r -E '\b\d{3}-\d{2}-\d{4}\b|\b\d{9}\b' prompts/; then
+            echo "❌ Potential PII found in prompts"
+            exit 1
+          fi
+          
+          echo "✅ No PII patterns detected"
+
+  generate-report:
+    name: Generate Evaluation Report
+    runs-on: ubuntu-latest
+    needs: [evaluate-metrics, compliance-check, security-scan]
+    if: always()
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+      
+      - name: Generate consolidated report
+        run: |
+          python -c "
+          import json
+          import os
+          from pathlib import Path
+          
+          # Collect all evaluation results
+          results = {}
+          artifacts_path = Path('artifacts')
+          
+          for eval_dir in artifacts_path.glob('evaluation-*'):
+              prompt_name = eval_dir.name.replace('evaluation-', '').replace('-', '/')
+              result_file = eval_dir / 'evaluation_results.json'
+              
+              if result_file.exists():
+                  with open(result_file) as f:
+                      results[prompt_name] = json.load(f)
+          
+          # Generate summary
+          total_prompts = len(results)
+          passed_prompts = sum(1 for r in results.values() if r.get('passed', False))
+          
+          summary = {
+              'total_prompts': total_prompts,
+              'passed': passed_prompts,
+              'failed': total_prompts - passed_prompts,
+              'pass_rate': passed_prompts / total_prompts if total_prompts > 0 else 0,
+              'details': results
+          }
+          
+          # Save report
+          with open('evaluation_report.json', 'w') as f:
+              json.dump(summary, f, indent=2)
+          
+          # Generate markdown report
+          report = f'''# Prompt Evaluation Report
+          
+          ## Summary
+          - Total Prompts Evaluated: {total_prompts}
+          - Passed: {passed_prompts}
+          - Failed: {total_prompts - passed_prompts}
+          - Pass Rate: {summary[\"pass_rate\"]:.1%}
+          
+          ## Details
+          '''
+          
+          for prompt, result in results.items():
+              status = '✅' if result.get('passed') else '❌'
+              report += f'\n### {prompt} {status}\n'
+              
+              if 'scores' in result.get('results', {}):
+                  report += '| Metric | Score | Threshold |\n'
+                  report += '|--------|-------|----------|\n'
+                  
+                  for metric, score in result['results'].items():
+                      threshold = result.get('thresholds', {}).get(f'{metric}_threshold', 'N/A')
+                      report += f'| {metric} | {score:.3f} | {threshold} |\n'
+          
+          with open('evaluation_report.md', 'w') as f:
+              f.write(report)
+          
+          print('Report generated successfully')
+          "
+      
+      - name: Upload final report
+        uses: actions/upload-artifact@v3
+        with:
+          name: evaluation-report
+          path: |
+            evaluation_report.json
+            evaluation_report.md
+      
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('evaluation_report.md', 'utf8');
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: report
+            });
+
+  approval-check:
+    name: Check Required Approvals
+    runs-on: ubuntu-latest
+    needs: [identify-changes, generate-report]
+    if: github.event_name == 'pull_request' && contains(needs.identify-changes.outputs.teams, 'compliance')
+    steps:
+      - name: Check for compliance team approval
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const reviews = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            
+            const complianceTeamMembers = [
+              'sarah.jones',
+              'mike.brown',
+              'lisa.garcia'
+            ];
+            
+            const hasComplianceApproval = reviews.data.some(review => 
+              review.state === 'APPROVED' && 
+              complianceTeamMembers.includes(review.user.login)
+            );
+            
+            if (!hasComplianceApproval) {
+              core.setFailed('Compliance team approval required for compliance prompts');
+            }

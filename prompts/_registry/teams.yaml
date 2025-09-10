@@ -1,0 +1,180 @@
+# PromptForge Team Configuration
+# Defines team ownership, permissions, and approval workflows
+
+teams:
+  risk:
+    name: Risk Analytics Team
+    description: Responsible for risk assessment and portfolio analysis prompts
+    lead: john.smith@company.com
+    members:
+      - alice.johnson@company.com
+      - bob.williams@company.com
+      - carol.davis@company.com
+    slack_channel: "#risk-analytics"
+    permissions:
+      - create_prompt
+      - update_prompt
+      - deploy_staging
+      - view_all_metrics
+    approval_required:
+      - deploy_production
+      - modify_evaluation_thresholds
+    evaluation_overrides:
+      hallucination_threshold: 0.98  # Stricter than default
+      accuracy_threshold: 0.97
+      compliance_required: true
+    prompt_templates:
+      - financial/risk_assessment
+      - financial/portfolio_analysis
+    
+  compliance:
+    name: Compliance Team
+    description: Manages regulatory compliance and KYC/AML prompts
+    lead: sarah.jones@company.com
+    members:
+      - mike.brown@company.com
+      - lisa.garcia@company.com
+      - david.miller@company.com
+    slack_channel: "#compliance"
+    permissions:
+      - create_prompt
+      - update_prompt
+      - deploy_staging
+      - deploy_production  # Compliance can deploy directly
+      - review_all_prompts
+      - override_evaluation
+    approval_required:
+      - disable_compliance_checks
+    evaluation_overrides:
+      hallucination_threshold: 0.99  # Highest standards
+      accuracy_threshold: 0.98
+      compliance_required: true
+      pii_detection_required: true
+    prompt_templates:
+      - compliance/kyc_template
+      - compliance/aml_template
+      - compliance/regulatory_reporting
+    
+  trading:
+    name: Trading Desk
+    description: Trading strategies and market analysis prompts
+    lead: michael.chen@company.com
+    members:
+      - jennifer.wong@company.com
+      - robert.taylor@company.com
+      - maria.rodriguez@company.com
+    slack_channel: "#trading-desk"
+    permissions:
+      - create_prompt
+      - update_prompt
+      - deploy_staging
+      - view_market_data
+    approval_required:
+      - deploy_production
+      - access_live_trading
+    evaluation_overrides:
+      hallucination_threshold: 0.96
+      accuracy_threshold: 0.94
+      latency_threshold_ms: 1000  # Speed is critical
+      compliance_required: true
+    prompt_templates:
+      - trading/market_analysis
+      - trading/signal_generation
+    
+  customer_service:
+    name: Customer Service Team
+    description: Customer-facing prompts and support automation
+    lead: emily.davis@company.com
+    members:
+      - james.wilson@company.com
+      - patricia.martinez@company.com
+      - william.anderson@company.com
+    slack_channel: "#customer-service"
+    permissions:
+      - create_prompt
+      - update_prompt
+      - deploy_staging
+      - view_customer_feedback
+    approval_required:
+      - deploy_production
+      - modify_tone_settings
+    evaluation_overrides:
+      hallucination_threshold: 0.95
+      accuracy_threshold: 0.96
+      toxicity_threshold: 0.01  # Very low tolerance
+      sentiment_check: true
+      compliance_required: true
+    prompt_templates:
+      - customer/inquiry_handler
+      - customer/complaint_resolution
+      - customer/product_recommendation
+    
+  platform:
+    name: Platform Team
+    description: Maintains shared prompts and infrastructure
+    lead: alex.kumar@company.com
+    members:
+      - sophia.patel@company.com
+      - daniel.lee@company.com
+      - olivia.thompson@company.com
+    slack_channel: "#platform-eng"
+    permissions:
+      - create_prompt
+      - update_prompt
+      - deploy_staging
+      - deploy_production
+      - modify_infrastructure
+      - access_all_prompts
+      - override_any_setting
+    approval_required: []  # Platform team has full access
+    evaluation_overrides:
+      hallucination_threshold: 0.97
+      accuracy_threshold: 0.96
+      compliance_required: true
+    prompt_templates:
+      - base/chain_of_thought
+      - base/few_shot
+      - shared/data_extraction
+
+# Approval workflows
+approval_workflows:
+  production_deployment:
+    required_approvers: 2
+    eligible_approvers:
+      - team_lead
+      - compliance_team_member
+      - platform_team_member
+    timeout_hours: 24
+    auto_approve_if_metrics_pass: false
+    
+  evaluation_override:
+    required_approvers: 1
+    eligible_approvers:
+      - compliance_team_member
+      - platform_team_member
+    timeout_hours: 4
+    
+  emergency_rollback:
+    required_approvers: 1
+    eligible_approvers:
+      - team_lead
+      - platform_team_member
+    timeout_hours: 0.5  # 30 minutes
+
+# Notification settings
+notifications:
+  channels:
+    - type: slack
+      events:
+        - production_deployment
+        - evaluation_failure
+        - emergency_rollback
+    - type: email
+      events:
+        - approval_required
+        - deployment_success
+        - deployment_failure
+    - type: pagerduty
+      events:
+        - critical_evaluation_failure
+        - production_error_rate_high

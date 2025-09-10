@@ -1,0 +1,198 @@
+metadata:
+  name: portfolio_risk_analysis
+  team: risk
+  description: "Analyzes portfolio risk metrics using Chain-of-Thought reasoning with VaR, Expected Shortfall, and Sharpe ratio calculations"
+  created: "2024-01-09T16:00:00Z"
+  version: "2.1.0"
+  status: production
+  tags:
+    - financial
+    - risk-assessment
+    - var-calculation
+    - portfolio-optimization
+  owner: john.smith@company.com
+  reviewers:
+    - alice.johnson@company.com
+    - bob.williams@company.com
+
+prompt:
+  template: |
+    You are a senior risk analyst with expertise in portfolio risk management.
+    Analyze the following portfolio for comprehensive risk metrics using systematic Chain-of-Thought reasoning.
+    
+    ## Portfolio Data:
+    {{ portfolio_data }}
+    
+    ## Required Analysis:
+    Using step-by-step reasoning, calculate and provide:
+    
+    ### Step 1: Data Validation
+    First, verify the portfolio data completeness and consistency:
+    - Check for missing positions or invalid data
+    - Validate total allocation sums to 100%
+    - Confirm all asset classes are properly classified
+    
+    ### Step 2: Market Risk Analysis
+    Calculate the following risk metrics with detailed methodology:
+    
+    1. **Value at Risk (VaR)**
+       - 95% confidence level
+       - 99% confidence level
+       - 1-day and 10-day horizons
+       - Show calculation steps and assumptions
+    
+    2. **Expected Shortfall (ES)**
+       - Conditional VaR beyond the VaR threshold
+       - Interpret the tail risk implications
+    
+    3. **Volatility Analysis**
+       - Portfolio volatility (annualized)
+       - Individual asset volatilities
+       - Correlation matrix impact
+    
+    ### Step 3: Performance Risk Metrics
+    4. **Sharpe Ratio**
+       - Risk-free rate assumption: {{ risk_free_rate | default('2.5%') }}
+       - Risk-adjusted return analysis
+    
+    5. **Maximum Drawdown**
+       - Historical maximum decline
+       - Recovery time analysis
+    
+    6. **Beta Analysis**
+       - Portfolio beta vs benchmark
+       - Systematic vs idiosyncratic risk
+    
+    ### Step 4: Risk Decomposition
+    7. **Asset Class Contribution**
+       - Risk contribution by asset class
+       - Diversification effectiveness
+    
+    8. **Concentration Risk**
+       - Single position limits
+       - Sector concentration analysis
+    
+    ### Step 5: Scenario Analysis
+    9. **Stress Testing**
+       - Market crash scenario (-20% equity markets)
+       - Interest rate shock (+200bps)
+       - Credit spread widening (+100bps)
+    
+    ### Step 6: Recommendations
+    Provide actionable insights:
+    - Risk level assessment (Low/Medium/High)
+    - Recommended position adjustments
+    - Hedging strategies if needed
+    
+    ## Important Risk Disclosures:
+    - Past performance is not indicative of future results
+    - All investments carry risk of loss
+    - Market conditions can change rapidly
+    - This analysis is for informational purposes only and does not constitute investment advice
+    
+    ## Output Format:
+    Structure your response as a comprehensive risk report with:
+    - Executive Summary
+    - Detailed Calculations (show work)
+    - Risk Metrics Table
+    - Recommendations
+    - Regulatory Disclosures
+  
+  variables:
+    portfolio_data:
+      type: object
+      required: true
+      description: "Portfolio holdings with positions, weights, and market data"
+      schema:
+        type: object
+        properties:
+          positions:
+            type: array
+            items:
+              type: object
+              properties:
+                symbol:
+                  type: string
+                weight:
+                  type: number
+                asset_class:
+                  type: string
+                market_value:
+                  type: number
+          benchmark:
+            type: string
+            default: "S&P 500"
+          currency:
+            type: string
+            default: "USD"
+    
+    risk_free_rate:
+      type: string
+      required: false
+      default: "2.5%"
+      description: "Risk-free rate for Sharpe ratio calculation"
+  
+  parameters:
+    temperature: 0.1  # Low for consistency in financial calculations
+    max_tokens: 3000
+    model: "gpt-4-turbo"
+    top_p: 0.95
+
+evaluation:
+  metrics:
+    hallucination_threshold: 0.98  # Extra strict for risk calculations
+    accuracy_threshold: 0.97
+    faithfulness_threshold: 0.95
+    compliance_required: true
+    calculation_accuracy: 0.99  # Custom metric for financial calculations
+  
+  test_suite: "tests/"
+  custom_rules: "evaluations/risk_calculation_validator.py"
+  
+  benchmarks:
+    - name: "calculation_accuracy"
+      description: "Validates VaR and Sharpe ratio calculations"
+      threshold: 0.95
+    - name: "disclosure_completeness"
+      description: "Ensures all required risk disclosures are present"
+      threshold: 1.0
+    - name: "methodology_transparency"
+      description: "Verifies step-by-step calculation methodology is shown"
+      threshold: 0.90
+
+deployment:
+  environments:
+    development:
+      auto_deploy: true
+      monitoring_level: "basic"
+    staging:
+      auto_deploy: false
+      approval_required: ["team_lead"]
+      monitoring_level: "detailed"
+    production:
+      auto_deploy: false
+      approval_required: ["team_lead", "compliance_team"]
+      monitoring_level: "comprehensive"
+      
+  rollback:
+    auto_rollback_on_error_rate: 0.05
+    manual_rollback_approvers: ["team_lead", "platform_team"]
+
+monitoring:
+  langfuse:
+    enabled: true
+    trace_sampling: 1.0  # Full tracing for risk calculations
+    score_thresholds:
+      accuracy: 0.97
+      latency_p95: 2000  # 2 second maximum
+  
+  alerts:
+    error_rate_threshold: 0.02
+    latency_p95_threshold: 1500
+    accuracy_threshold: 0.95
+    
+  dashboards:
+    - name: "risk_team_performance"
+      url: "https://company.grafana.com/risk-prompts"
+    - name: "langfuse_traces"
+      url: "https://us.cloud.langfuse.com/project/risk-analysis"

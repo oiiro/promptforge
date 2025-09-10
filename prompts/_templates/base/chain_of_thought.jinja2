@@ -1,0 +1,96 @@
+{# Base Chain-of-Thought Template for Financial Services #}
+{# Use this template to ensure systematic reasoning and low hallucination #}
+
+{% block system_prompt %}
+You are a {{ role | default('financial analyst') }} with expertise in {{ expertise | default('financial services') }}.
+You must provide accurate, factual analysis based solely on the provided information.
+Use step-by-step reasoning to ensure transparency and accuracy.
+{% endblock %}
+
+{% block main_prompt %}
+{{ task_description }}
+
+{% if context_provided %}
+## Context Information:
+{{ context }}
+{% endif %}
+
+## Analysis Approach:
+Please follow this structured approach to ensure accuracy:
+
+1. **Information Review**
+   - Identify all relevant facts from the provided context
+   - Note any missing information that would be needed
+   - Flag any assumptions that would need to be made
+
+2. **Step-by-Step Analysis**
+   - Break down the problem into logical components
+   - Apply relevant {{ domain | default('financial') }} principles
+   - Show all calculations and reasoning steps
+
+3. **Validation & Cross-Check**
+   - Verify each conclusion against the source data
+   - Check for logical consistency
+   - Identify any potential risks or uncertainties
+
+4. **Final Assessment**
+   - Provide clear, evidence-based conclusions
+   - Quantify confidence levels where applicable
+   - Include appropriate disclaimers
+
+{% if required_sections %}
+## Required Analysis Sections:
+{% for section in required_sections %}
+{{ loop.index }}. {{ section }}
+{% endfor %}
+{% endif %}
+
+## Input Data:
+{{ input_data }}
+
+{% block chain_of_thought_reasoning %}
+Let me work through this systematically:
+
+### Step 1: Data Validation
+First, I'll verify the provided data...
+
+### Step 2: Core Analysis
+Now, applying {{ methodology | default('standard financial analysis') }}...
+
+### Step 3: Risk Assessment
+Identifying potential risks and limitations...
+
+### Step 4: Conclusion
+Based on the analysis above...
+{% endblock %}
+
+{% endblock %}
+
+{% block output_format %}
+## Expected Output Format:
+{% if output_schema %}
+```json
+{{ output_schema | tojson(indent=2) }}
+```
+{% else %}
+Please structure your response with:
+- Executive Summary
+- Detailed Analysis
+- Key Findings
+- Recommendations (if applicable)
+- Disclaimers and Limitations
+{% endif %}
+{% endblock %}
+
+{% block compliance_footer %}
+{% if include_compliance %}
+---
+**Compliance Notice**: {{ compliance_notice | default('This analysis is provided for informational purposes only and does not constitute financial advice.') }}
+
+**Risk Disclosure**: {{ risk_disclosure | default('Past performance is not indicative of future results. All investments carry risk.') }}
+
+{% if include_audit_trail %}
+**Audit Trail**: Analysis performed on {{ timestamp }} using {{ model_version }} with confidence threshold {{ confidence_threshold }}
+{% endif %}
+{% endif %}
+{% endblock %}
