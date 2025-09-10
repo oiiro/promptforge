@@ -8,7 +8,8 @@ Use step-by-step reasoning to ensure transparency and accuracy.
 {% endblock %}
 
 {% block main_prompt %}
-{{ task_description }}
+## Task
+{{ prompt_description | default(task_description) }}
 
 {% if context_provided %}
 ## Context Information:

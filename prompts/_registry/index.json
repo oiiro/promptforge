@@ -1,6 +1,7 @@
 {
   "version": "1.0.0",
   "last_updated": "2024-01-09T16:00:00Z",
+  "total_prompts": 5,
   "prompts": {
     "risk/portfolio_analysis": {
       "name": "Portfolio Risk Analysis",
