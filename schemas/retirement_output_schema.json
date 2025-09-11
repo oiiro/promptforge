@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "retirement-assessment-output",
+  "title": "Retirement Eligibility Assessment Output",
+  "description": "Structured response for retirement eligibility determination",
+  "type": "object",
+  "properties": {
+    "assessment": {
+      "type": "object",
+      "properties": {
+        "eligible": {
+          "type": "boolean",
+          "description": "Whether employee is eligible for retirement"
+        },
+        "eligibilityType": {
+          "type": "string",
+          "enum": ["Standard", "Early", "RuleOf85", "NotEligible"],
+          "description": "Type of eligibility determination"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence score of the assessment (0-1)"
+        }
+      },
+      "required": ["eligible", "eligibilityType", "confidence"],
+      "additionalProperties": false
+    },
+    "reasoning": {
+      "type": "object",
+      "properties": {
+        "primaryRule": {
+          "type": "string",
+          "description": "Primary rule applied for determination"
+        },
+        "ageCheck": {
+          "type": "object",
+          "properties": {
+            "currentAge": {"type": "integer"},
+            "requiredAge": {"type": "integer"},
+            "meets": {"type": "boolean"}
+          },
+          "required": ["currentAge", "requiredAge", "meets"]
+        },
+        "serviceCheck": {
+          "type": "object",
+          "properties": {
+            "currentYears": {"type": "number"},
+            "requiredYears": {"type": "integer"},
+            "meets": {"type": "boolean"}
+          },
+          "required": ["currentYears", "requiredYears", "meets"]
+        },
+        "specialRules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rule": {"type": "string"},
+              "applies": {"type": "boolean"},
+              "calculation": {"type": "string"}
+            },
+            "required": ["rule", "applies"]
+          }
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 500,
+          "description": "Human-readable explanation of the decision"
+        }
+      },
+      "required": ["primaryRule", "ageCheck", "serviceCheck", "explanation"],
+      "additionalProperties": false
+    },
+    "benefits": {
+      "type": "object",
+      "properties": {
+        "estimatedMonthlyAmount": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Estimated monthly retirement benefit"
+        },
+        "reductionFactors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "factor": {"type": "string"},
+              "percentage": {"type": "number"}
+            },
+            "required": ["factor", "percentage"]
+          }
+        },
+        "fullBenefitAge": {
+          "type": "integer",
+          "description": "Age at which full benefits are available"
+        }
+      },
+      "additionalProperties": false
+    },
+    "compliance": {
+      "type": "object",
+      "properties": {
+        "auditTrail": {
+          "type": "string",
+          "description": "Audit trail for compliance"
+        },
+        "policyVersion": {
+          "type": "string",
+          "description": "Version of policy used"
+        },
+        "reviewRequired": {
+          "type": "boolean",
+          "description": "Whether human review is required"
+        },
+        "dataClassification": {
+          "type": "string",
+          "enum": ["Public", "Internal", "Confidential", "Restricted"],
+          "default": "Confidential"
+        }
+      },
+      "required": ["auditTrail", "policyVersion", "reviewRequired"],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "processedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "processingTime": {
+          "type": "number",
+          "description": "Processing time in milliseconds"
+        },
+        "model": {
+          "type": "string",
+          "description": "Model used for assessment"
+        },
+        "version": {
+          "type": "string",
+          "description": "System version"
+        }
+      },
+      "required": ["requestId", "processedAt", "processingTime"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["assessment", "reasoning", "compliance", "metadata"],
+  "additionalProperties": false
+}
