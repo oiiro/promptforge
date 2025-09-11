@@ -337,6 +337,17 @@ def demonstrate_input_validation():
         print(f"{test_case['name']}: {is_valid} - {message}")
 ```
 
+### 🔧 Verify This Component
+
+Test the JSON schema validation setup:
+
+```bash
+# Test schema validation with fallback examples
+python run_component.py schema_validation
+```
+
+This will validate the schema files exist and demonstrate validation with sample data, providing fallback examples if dependencies are missing.
+
 ---
 
 ## Output JSON Schema Setup
@@ -656,6 +667,17 @@ def demonstrate_output_validation():
         print(f"{test_case['name']}: {is_valid} - {message}")
 ```
 
+### 🔧 Verify This Component
+
+Test the output JSON schema validation:
+
+```bash
+# Test schema validation with sample output data
+python run_component.py schema_validation
+```
+
+The verification includes both input and output schema validation with sample data examples.
+
 ---
 
 ## Prompt Definition with Templating
@@ -932,6 +954,17 @@ def create_retirement_prompt():
     
     return prompt
 ```
+
+### 🔧 Verify This Component
+
+Test the prompt templating system:
+
+```bash
+# Test Jinja2 templating with dynamic content
+python run_component.py prompt_templating
+```
+
+This verifies template rendering with employee data, showing how dynamic content is injected into prompts. Provides fallback examples if Jinja2 is not available.
 
 ---
 
@@ -1229,6 +1262,17 @@ python -m pytest tests/unit/test_retirement_assessment.py --cov=retirement_asses
 # Run specific test
 python -m pytest tests/unit/test_retirement_assessment.py::TestRetirementAssessment::test_prompt_generation -v
 ```
+
+### 🔧 Verify This Component
+
+Test the unit testing framework:
+
+```bash
+# Test business logic unit tests
+python run_component.py unit_testing
+```
+
+This runs unit tests for eligibility calculation logic, testing standard, early retirement, and rule-of-85 scenarios. All tests run without external dependencies.
 
 ---
 
@@ -1660,6 +1704,17 @@ API_BASE_URL=http://localhost:8000 API_KEY=your-key python -m pytest tests/integ
 # Run specific integration test
 python -m pytest tests/integration/test_retirement_integration.py::TestRetirementAssessmentIntegration::test_end_to_end_assessment_flow -v
 ```
+
+### 🔧 Verify This Component
+
+Test the integration testing pipeline:
+
+```bash
+# Test end-to-end processing pipeline
+python run_component.py integration_testing
+```
+
+This simulates the complete assessment pipeline from input validation through eligibility determination and response formatting.
 
 ---
 
@@ -2548,6 +2603,17 @@ python -m pytest tests/comprehensive/test_retirement_comprehensive.py::TestCompr
 # Run with detailed output
 python -m pytest tests/comprehensive/test_retirement_comprehensive.py -v -s
 ```
+
+### 🔧 Verify This Component
+
+Test the comprehensive test data generation:
+
+```bash
+# Generate and test golden/edge/adversarial cases
+python run_component.py test_data_generation
+```
+
+This generates different types of test cases: golden (ideal scenarios), edge (boundary conditions), and adversarial (challenging inputs) for thorough validation.
 
 ---
 
@@ -3571,6 +3637,17 @@ python -m pytest tests/validation/test_heuristic_validation.py -v
 python scripts/run_heuristic_validation_batch.py --input test_data/all_test_cases.json --output validation_reports/
 ```
 
+### 🔧 Verify This Component
+
+Test the heuristic validation rules:
+
+```bash
+# Test rule-based validation checks
+python run_component.py heuristic_validation
+```
+
+This tests age-service consistency checks, confidence-explanation consistency, and other business rule validations that catch obvious errors quickly.
+
 ---
 
 ## Runtime Guardrails and Policy Filters
@@ -4475,6 +4552,17 @@ if __name__ == "__main__":
     demonstrate_policy_filter()
 ```
 
+### 🔧 Verify This Component
+
+Test the policy filter system:
+
+```bash
+# Test compliance policy validation
+python run_component.py policy_filters
+```
+
+This tests policy filters for confidence thresholds, audit trail completeness, and other compliance requirements with automatic violation detection.
+
 ---
 
 ## Runtime Response Modification
@@ -4992,6 +5080,19 @@ def demonstrate_response_modification():
 if __name__ == "__main__":
     demonstrate_response_modification()
 ```
+
+### 🔧 Verify This Component
+
+Test the response modification system:
+
+```bash
+# Test response enhancement and correction
+python run_component.py response_modification
+```
+
+This tests automatic response improvements for low confidence scores, incomplete audit trails, and policy violations with clear before/after examples.
+
+---
 
 ## 11. Langfuse Tracking and Observability
 
@@ -6592,6 +6693,19 @@ if __name__ == "__main__":
     demonstrate_policy_integrated_evaluation()
 ```
 
+### 🔧 Verify This Component
+
+Test the custom evaluation framework:
+
+```bash
+# Test custom evaluation with team-specific thresholds
+python run_component.py custom_evaluation
+```
+
+This tests the custom evaluation system with accuracy metrics and demonstrates how different team thresholds would affect evaluation results.
+
+---
+
 ## 13. Iterative Refinement through Evaluation Failures
 
 This section demonstrates how to systematically improve prompts through iterative evaluation and refinement cycles, using evaluation failures to guide specific improvements.
@@ -7992,6 +8106,19 @@ The retirement eligibility assessment example showcases:
 - **High-Stakes Accuracy**: 98%+ accuracy requirements with mathematical validation
 - **Regulatory Compliance**: Complete audit trails, policy versioning, review requirements
 - **Enterprise Scale**: Team-specific thresholds, multi-environment deployment, cost optimization
+
+### 🔧 Verify This Component
+
+Test the iterative refinement process:
+
+```bash
+# Test prompt quality analysis and improvement
+python run_component.py iterative_refinement
+```
+
+This demonstrates systematic prompt improvement by analyzing quality indicators and applying refinements based on evaluation feedback, showing measurable quality improvements.
+
+---
 
 ### 🚀 Getting Started
 
