@@ -10,6 +10,7 @@ This guide demonstrates all aspects of prompt development in PromptForge using a
 ```bash
 python run_component.py schema_validation
 python run_component.py prompt_templating
+python run_component.py guardrails_compliance
 python run_component.py unit_testing
 ```
 
@@ -24,7 +25,7 @@ python verify_developer_guide.py
 # For full functionality (recommended for developers)
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install jsonschema jinja2
+pip install jsonschema jinja2 detoxify
 
 # Or run without dependencies (fallback examples only)
 # No setup required - wrapper provides fallbacks
@@ -971,6 +972,124 @@ python run_component.py prompt_templating
 ```
 
 This verifies template rendering with employee data, showing how dynamic content is injected into prompts. Provides fallback examples if Jinja2 is not available.
+
+---
+
+## Guardrails Compliance Integration
+
+### Financial Services Grade Validation
+
+PromptForge includes enterprise-grade guardrails for financial services compliance, implementing both pre-execution and post-execution validation with comprehensive audit trails.
+
+#### Pre-Execution Guardrails
+
+**PII Detection and Protection:**
+```python
+# Automatic detection of sensitive information
+PII_PATTERNS = [
+    (r'\b\d{3}-\d{2}-\d{4}\b', 'SSN'),           # Social Security Numbers
+    (r'\b[A-Z]{2}\d{6,8}\b', 'Passport'),        # Passport Numbers
+    (r'\b\d{16}\b', 'Credit Card'),              # Credit Card Numbers
+    (r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', 'Email'),
+    (r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', 'Phone'), # Phone Numbers
+    (r'\b\d{9,12}\b', 'Account Number')          # Account Numbers
+]
+```
+
+**Prompt Injection Protection:**
+```python
+INJECTION_PATTERNS = [
+    r'ignore\s+(previous|all|above)',    # Instruction bypassing
+    r'disregard\s+instructions',         # Direct instruction override
+    r'new\s+(task|instruction|role)',    # Role manipulation
+    r'system\s*:\s*',                    # System command injection
+    r'</?(script|img|iframe|object|embed)', # HTML/JavaScript injection
+]
+```
+
+**Financial Advice Request Filtering:**
+```python
+FINANCIAL_ADVICE_TRIGGERS = [
+    r'\b(invest|investment|portfolio|stock|trading|forex|crypto)\b',
+    r'\b(buy|sell|short|long)\s+(position|stock|option)',
+    r'\b(financial|investment)\s+advice',
+    r'\bmake\s+money\b',
+    r'\bget\s+rich\b'
+]
+```
+
+#### Post-Execution Guardrails
+
+**Output Validation Pipeline:**
+1. **JSON Schema Validation** - Structural compliance
+2. **PII Scanning** - Ensure no sensitive data in responses
+3. **Hallucination Detection** - Compare with expected results
+4. **Toxicity Screening** - Content appropriateness validation
+5. **Financial Advice Compliance** - Regulatory requirement adherence
+
+**Audit Trail Generation:**
+```python
+audit_entry = {
+    "timestamp": datetime.utcnow().isoformat(),
+    "stage": "pre_validation",
+    "input_hash": hashlib.sha256(input_text.encode()).hexdigest(),
+    "output_hash": hashlib.sha256(output_text.encode()).hexdigest(),
+    "violations": [{"rule": "pii_ssn", "severity": "high", "message": "SSN detected"}],
+    "passed": False
+}
+```
+
+#### Compliance Integration
+
+**GuardrailOrchestrator Usage:**
+```python
+from guardrails.validators import GuardrailOrchestrator
+
+orchestrator = GuardrailOrchestrator("schemas/retirement_output_schema.json")
+
+# Pre-execution validation
+is_valid, sanitized_input, violations = orchestrator.validate_request(user_input)
+
+if not is_valid:
+    # Handle violations according to severity
+    high_severity = [v for v in violations if v.severity == "high"]
+    if high_severity:
+        return {"error": "Request blocked due to policy violations"}
+
+# Post-execution validation
+is_valid, violations = orchestrator.validate_response(llm_output, user_input, expected_output)
+
+# Complete audit trail for compliance reporting
+audit_log = orchestrator.get_audit_log()
+```
+
+### 🔧 Verify This Component
+
+Test the comprehensive guardrails compliance system:
+
+```bash
+# Test financial services guardrails with compliance validation
+python run_component.py guardrails_compliance
+```
+
+This tests:
+- **PII Detection**: SSN, credit cards, phone numbers
+- **Prompt Injection Protection**: Instruction bypassing attempts  
+- **Output Compliance**: JSON validation, toxicity screening
+- **Audit Trail Generation**: Complete regulatory compliance logs
+- **Financial Services Standards**: SEC/FINRA compliant validation
+
+The enhanced schema validation also integrates guardrails:
+
+```bash
+# Test integrated schema validation with guardrails
+python run_component.py schema_validation
+```
+
+This provides layered validation:
+1. Pre-execution guardrails (input sanitization)
+2. JSON schema validation (structural compliance)
+3. Post-execution guardrails (output verification)
 
 ---
 

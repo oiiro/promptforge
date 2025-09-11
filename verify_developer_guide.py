@@ -41,14 +41,15 @@ class DeveloperGuideVerifier:
         self.test_modules = [
             ("1. JSON Schema Validation", "schema_validation"),
             ("2. Prompt Templating", "prompt_templating"),
-            ("3. Unit Testing", "unit_testing"),
-            ("4. Integration Testing", "integration_testing"),
-            ("5. Test Data Generation", "test_data_generation"),
-            ("6. Heuristic Validation", "heuristic_validation"),
-            ("7. Policy Filters", "policy_filters"),
-            ("8. Response Modification", "response_modification"),
-            ("9. Custom Evaluation", "custom_evaluation"),
-            ("10. Iterative Refinement", "iterative_refinement")
+            ("3. Guardrails Compliance", "guardrails_compliance"),
+            ("4. Unit Testing", "unit_testing"),
+            ("5. Integration Testing", "integration_testing"),
+            ("6. Test Data Generation", "test_data_generation"),
+            ("7. Heuristic Validation", "heuristic_validation"),
+            ("8. Policy Filters", "policy_filters"),
+            ("9. Response Modification", "response_modification"),
+            ("10. Custom Evaluation", "custom_evaluation"),
+            ("11. Iterative Refinement", "iterative_refinement")
         ]
     
     def run_all_tests(self) -> Dict[str, Any]:
