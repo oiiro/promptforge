@@ -4,6 +4,26 @@
 
 This guide demonstrates all aspects of prompt development in PromptForge using a real-world financial planning example that showcases evaluation failures and iterative refinement.
 
+## Quick Start
+
+**Test individual components:**
+```bash
+python run_component.py schema_validation
+python run_component.py prompt_templating
+python run_component.py unit_testing
+```
+
+**Run all tests:**
+```bash
+python run_component.py all
+python verify_developer_guide.py
+```
+
+**Prerequisites:**
+```bash
+pip install jsonschema jinja2  # Optional - wrapper provides fallbacks
+```
+
 ## Table of Contents
 
 1. [Overview](#overview)
@@ -7977,31 +7997,63 @@ The retirement eligibility assessment example showcases:
 
 To implement this system in your environment:
 
-1. **Setup Dependencies**:
-   ```bash
-   pip install jinja2 jsonschema deepeval langfuse pytest
-   ```
+## Running the Complete Example
 
-2. **Configure Environment Variables**:
-   ```bash
-   export LANGFUSE_PUBLIC_KEY="your_key"
-   export LANGFUSE_SECRET_KEY="your_secret"
-   export PROMPTFORGE_TEAM="risk"
-   ```
+### Simplified Testing with Wrapper Script
 
-3. **Initialize Schema Files**:
-   - Copy `retirement_input_schema.json` and `retirement_output_schema.json`
-   - Customize for your specific use case and data structures
+The complete developer guide can be tested using the provided wrapper scripts:
 
-4. **Run Comprehensive Tests**:
-   ```bash
-   python comprehensive_testing.py
-   ```
+**Individual Component Testing:**
+```bash
+# Test specific components
+python run_component.py schema_validation
+python run_component.py prompt_templating
+python run_component.py unit_testing
+python run_component.py integration_testing
+python run_component.py test_data_generation
+python run_component.py heuristic_validation
+python run_component.py policy_filters
+python run_component.py response_modification
+python run_component.py custom_evaluation
+python run_component.py iterative_refinement
+```
 
-5. **Start Iterative Refinement**:
-   ```bash
-   python iterative_refinement.py
-   ```
+**Complete Verification:**
+```bash
+# Run all tests at once
+python run_component.py all
+
+# Or use the verification script
+python verify_developer_guide.py
+```
+
+**Available Components:**
+- `schema_validation` - JSON schema validation with fallback examples
+- `prompt_templating` - Jinja2 templating with mock examples
+- `unit_testing` - Business logic unit tests
+- `integration_testing` - End-to-end pipeline testing
+- `test_data_generation` - Golden/edge/adversarial test case generation
+- `heuristic_validation` - Rule-based validation checks
+- `policy_filters` - Compliance policy validation
+- `response_modification` - Response enhancement and correction
+- `custom_evaluation` - Custom evaluation framework testing
+- `iterative_refinement` - Prompt improvement simulation
+
+The wrapper provides fallback implementations when external dependencies (jsonschema, jinja2, etc.) are not available, allowing you to understand each component without requiring a full setup.
+
+### Installation and Setup
+
+**Minimal Setup (testing only):**
+```bash
+# No dependencies required - wrapper provides fallbacks
+python run_component.py all
+```
+
+**Full Setup (production use):**
+```bash
+pip install jsonschema jinja2 deepeval langfuse detoxify
+python verify_developer_guide.py
+```
 
 ### 📊 Performance Standards
 
