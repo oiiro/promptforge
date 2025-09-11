@@ -21,7 +21,13 @@ python verify_developer_guide.py
 
 **Prerequisites:**
 ```bash
-pip install jsonschema jinja2  # Optional - wrapper provides fallbacks
+# For full functionality (recommended for developers)
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install jsonschema jinja2
+
+# Or run without dependencies (fallback examples only)
+# No setup required - wrapper provides fallbacks
 ```
 
 ## Table of Contents
@@ -8170,14 +8176,28 @@ The wrapper provides fallback implementations when external dependencies (jsonsc
 
 ### Installation and Setup
 
-**Minimal Setup (testing only):**
+**Developer Testing Setup (recommended):**
+```bash
+# Create virtual environment for proper dependency management
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install jsonschema jinja2
+
+# Test with full functionality
+python run_component.py all
+python verify_developer_guide.py
+```
+
+**Fallback Testing (no setup required):**
 ```bash
 # No dependencies required - wrapper provides fallbacks
 python run_component.py all
 ```
 
-**Full Setup (production use):**
+**Production Setup (complete functionality):**
 ```bash
+python3 -m venv venv
+source venv/bin/activate
 pip install jsonschema jinja2 deepeval langfuse detoxify
 python verify_developer_guide.py
 ```

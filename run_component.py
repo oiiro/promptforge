@@ -563,9 +563,62 @@ class ComponentRunner:
             with open("schemas/retirement_output_schema.json") as f:
                 output_schema = json.load(f)
         
-        # Test data
-        sample_input = {"employee": {"age": 65, "yearsOfService": 25}}
-        sample_output = {"assessment": {"eligible": True, "eligibilityType": "Standard"}}
+        # Test data that matches the full schemas
+        sample_input = {
+            "employee": {
+                "id": "EMP-123456",
+                "name": "John Doe",
+                "age": 65,
+                "yearsOfService": 25,
+                "salary": 75000,
+                "department": "Engineering",
+                "retirementPlan": "401k",
+                "performanceRating": "Exceeds"
+            },
+            "companyPolicies": {
+                "standardRetirementAge": 65,
+                "minimumServiceYears": 20,
+                "earlyRetirementServiceYears": 30,
+                "ruleOf85Enabled": True
+            },
+            "requestMetadata": {
+                "requestId": "550e8400-e29b-41d4-a716-446655440000",
+                "requestedBy": "verification-script",
+                "timestamp": "2024-01-15T10:00:00Z"
+            }
+        }
+        
+        sample_output = {
+            "assessment": {
+                "eligible": True,
+                "eligibilityType": "Standard",
+                "confidence": 0.95
+            },
+            "reasoning": {
+                "primaryRule": "Standard",
+                "ageCheck": {
+                    "currentAge": 65,
+                    "requiredAge": 65,
+                    "meets": True
+                },
+                "serviceCheck": {
+                    "currentYears": 25,
+                    "requiredYears": 20,
+                    "meets": True
+                },
+                "explanation": "Employee meets standard retirement eligibility requirements."
+            },
+            "compliance": {
+                "auditTrail": "ASSESSMENT_COMPLETED_Standard",
+                "policyVersion": "2024.1",
+                "reviewRequired": False
+            },
+            "metadata": {
+                "requestId": "550e8400-e29b-41d4-a716-446655440000",
+                "processedAt": "2024-01-15T10:00:00Z",
+                "processingTime": 150
+            }
+        }
         
         # Validate
         jsonschema.validate(sample_input, input_schema)
